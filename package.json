@@ -5,13 +5,14 @@
   "scripts": {
     "start": "node ./bin/www",
     "devstart": "nodemon ./bin/www",
-    "serverstart": "DEBUG=Location-Based-Authentication-System:* npm run devstart"
+    "serverstart": "SET DEBUG=Location-Based-Authentication-System:* & npm start"
   },
   "dependencies": {
     "cookie-parser": "^1.4.7",
     "debug": "^4.4.1",
     "express": "^5.1.0",
     "http-errors": "~2.0.0",
+    "mongoose": "^8.19.4",
     "morgan": "^1.10.0",
     "pug": "3.0.3"
   },
