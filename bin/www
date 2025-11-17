@@ -15,6 +15,23 @@ const http = require("http");
 const port = normalizePort(process.env.PORT || "3000");
 app.set("port", port);
 
+// Set up mongoose connection
+const mongoose = require("mongoose");
+
+mongoose.set("strictQuery", false);
+const mongoDB =
+  "mongodb+srv://vytasmartuzas_db_user:QZhiR6KurNKf9lQm@cluster0.htntzt2.mongodb.net/?appName=Cluster0";
+
+async function connectMongoose() {
+  await mongoose.connect(mongoDB);
+}
+
+try {
+  connectMongoose();
+} catch (err) {
+  console.error("Failed to connect to MongoDB:", err);
+  process.exit(1);
+}
 /**
  * Create HTTP server.
  */
