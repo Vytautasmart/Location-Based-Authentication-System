@@ -1,4 +1,4 @@
-### Location Based Authentication
+# Location Based Authentication
 
 ## Work done so far:
 
@@ -8,19 +8,19 @@
 
 ## TODO:
 
-# 1. replace the the Mongo DB database with a PostgreSQL one.
+### 1. replace the the Mongo DB database with a PostgreSQL one.
 
 - figure out a free way to host a PostgeSQL database online.
 - create a user object that consists of: id, username, password (bare minimum for test purposes now)
 
-# 2. Create a page:
+### 2. Create a page:
 
 - must accept two values: username and password
 - store them on an object called user
 - request the data to be sent to the database
 - receive a message saying "user with username created"
 
-Once the data transfer is set up and working, next steps to think about:
+#### Once the data transfer is set up and working, next steps to think about:
 
 - Implementing JWT for session management
 - Look int OAuth for authentication features
