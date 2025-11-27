@@ -12,6 +12,8 @@
 
 - figure out a free way to host a PostgeSQL database online.
 - create a user object that consists of: id, username, password (bare minimum for test purposes now)
+- learn about how to sent a HTTP request to the database.
+- send a response back with the user details
 
 ### 2. Create a page:
 
@@ -29,3 +31,6 @@
 - Look int Google location API and how to implement it.
 
 P.S. all of these tasks need to be broken down into manageble steps.
+
+
+
