@@ -1,0 +1,5 @@
+{
+  "events": {
+    "start": "open-cli http://localhost:3000"
+  }
+}

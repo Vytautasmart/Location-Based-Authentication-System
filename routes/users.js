@@ -9,7 +9,6 @@ router.get("/", (req, res, next) => {
 
 router.post("/", async (req, res, next) => {
   const { username, password } = req.body;
-
   try {
     const result = await pool.query(
       "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING *",
