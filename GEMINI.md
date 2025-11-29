@@ -20,3 +20,14 @@
     *   The script captures the user's input, creates a JSON object, and sends it to the server via a `fetch` POST request to the `/users` endpoint.
     *   Modified `routes/index.js` to serve the new `index.html` file as the root page.
     *   Updated the `POST` handler in `routes/users.js` to receive the user data and log it to the console for verification. The original database insertion logic was temporarily commented out to focus on the front-end implementation.
+
+### Database Integration and Finalization
+
+*   **Database Connection:**
+    *   Uncommented the database logic in `routes/users.js` to enable saving user data to the PostgreSQL database.
+    *   Replaced the hardcoded database connection string in `db/postgre.js` with an environment variable (`DATABASE_URL`) for improved security and flexibility.
+    *   Created a `.env` file to store the `DATABASE_URL` and added it to `.gitignore` to prevent committing sensitive credentials.
+
+*   **Commit and Push:**
+    *   Committed all changes with the message "feat: Add user submission form and handle POST request".
+    *   Pushed the changes to the remote `feature-db` branch.
