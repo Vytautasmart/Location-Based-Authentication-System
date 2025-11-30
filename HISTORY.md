@@ -25,6 +25,10 @@
 *   **Repository Management:**
     *   Committed all new features and fixes to the Git repository with descriptive, conventional commit messages.
 
+*   **Project Guidance:**
+    *   Provided a detailed, step-by-step guide on how to set up a React Native mobile application for the project.
+    *   The guide included instructions for setting up the development environment, initializing a React Native project, integrating a camera library, handling native permissions, and the process for testing on simulators versus physical devices.
+
 ## November 29, 2025
 
 ### Project Cleanup and UI Implementation

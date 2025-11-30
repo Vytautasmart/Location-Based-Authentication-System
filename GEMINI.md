@@ -1,93 +1,33 @@
 # Location-Based Authentication System
 
-This project is a Location-Based Authentication System. It is being built using JavaScript and Node.js for the backend. React Native will be utilized to create mobile applications for this system.
+Subject Area and Background:
 
----
+This project is situated within the domain of cybersecurity and network authentication, focusing on the development of a Location-based Authentication System (LBAS). Traditional authentication methods, such as passwords or biometrics, rely on static factors, which can be susceptible to various attacks like phishing, brute force, and credential theft. To address these vulnerabilities, this project introduces a second layer of security by using a user's geographical location as part of the authentication process. LBAS leverages GPS or Wi-Fi-based location data to ensure that access to sensitive systems is granted only when a user is in a pre-approved location. This method adds an additional factor of authentication that enhances security, especially in systems where geographic location is an important determinant of access.
 
-## Project Overview
+Project Description:
 
-> **Suggestion:** Describe the primary goal of your project here. What problem are you trying to solve? Who is this system for? For example: "This system is designed to provide a seamless and secure authentication experience for employees at a corporate campus by verifying their location, removing the need for traditional passwords when on-site."
+The primary objective of this project is to design and implement a prototype of the Location-based Authentication System (LBAS). The system will be developed on both web and mobile platforms, utilising the following key technologies and components:
 
-## Core Features
+- GPS and Wi-Fi Location Services: To collect real-time location data from users' devices.
 
-> **Suggestion:** List the essential features. Be specific.
->
-> - **User Registration & Login:** Standard email/password registration and a secure login mechanism.
-> - **Location Verification:** The core feature. The mobile app will send the user's location to the backend for verification.
-> - **Geofenced Zones:** Admins should be able to define geographical areas (geofences) where authentication is permitted.
-> - **Real-time Access Control:** Grant or deny access to resources based on the user's real-time location.
-> - **Admin Dashboard:** A web interface for administrators to manage users and geofenced zones.
-> - **Security:** Encrypted data transmission (HTTPS), secure storage of user data, and protection against location spoofing.
+- Backend Authentication Server: A server to handle authentication requests, verify credentials, and check location data against predefined trusted zones.
 
-## System Architecture
+- Database: Storing user credentials, authorised locations, and session logs.
 
-> **Suggestion:** Outline the main components of your system and how they interact.
->
-> - **Frontend (Mobile):** React Native app for iOS and Android. Responsible for capturing GPS data and communicating with the backend.
-> - **Backend:** Node.js with the Express.js framework to build a RESTful API.
-> - **Database:** PostgreSQL for storing user data, location history, and geofence definitions.
-> - **Real-time Communication (Optional):** WebSockets (e.g., using Socket.io) for real-time updates between the backend and mobile app.
+- Communication Protocols: Secure communication between the client and server using HTTPS and data encryption.
 
-## Data Models
+- The system will work by collecting the user's current location during login attempts and comparing it to trusted locations stored in the database. Only if the user is within an authorised zone will they be granted access to the system. This project also involves investigating the accuracy of location services and building safeguards against location spoofing attempts (e.g., through IP manipulation or GPS apps, consider location on campus?). The system will be evaluated based on the accuracy of location detection, speed of verification, and overall user experience.
 
-> **Suggestion:** Define the structure of your database tables or document schemas.
->
-> - **User:**
->   - `user_id` (Primary Key)
->   - `username` (String, unique)
->   - `email` (String, unique)
->   - `password_hash` (String)
->   - `created_at` (Timestamp)
-> - **AuthZone (Geofence):**
->   - `zone_id` (Primary Key)
->   - `name` (String)
->   - `latitude` (Numeric)
->   - `longitude` (Numeric)
->   - `radius` (Numeric, in meters)
-> - **LocationLog:**
->   - `log_id` (Primary Key)
->   - `user_id` (Foreign Key to User)
->   - `latitude` (Numeric)
->   - `longitude` (Numeric)
->   - `timestamp` (Timestamp)
->   - `is_within_zone` (Boolean)
+Deliverables:
 
-## API Endpoints
+- Working Prototype: A functional LBAS prototype for both web and/or mobile platforms, capable of verifying user location and credentials.
 
-> **Suggestion:** Plan the routes for your REST API.
->
-> **Authentication:**
->
-> - `POST /api/auth/register` - Register a new user.
-> - `POST /api/auth/login` - Log in a user and return a token.
->
-> **Location:**
->
-> - `POST /api/location/verify` - Receive location data from the mobile app and verify if it's within an `AuthZone`.
->
-> **Admin (Protected Routes):**
->
-> - `GET /api/admin/zones` - Get all `AuthZone`s.
-> - `POST /api/admin/zones` - Create a new `AuthZone`.
-> - `PUT /api/admin/zones/:zone_id` - Update an `AuthZone`.
-> - `DELETE /api/admin/zones/:zone_id` - Delete an `AuthZone`.
+- Location-based Authentication Algorithm: A robust algorithm that integrates user credentials and geographic location to grant or deny access.
 
-## Authentication Flow
+- Secure Communication Protocol: Implementation of HTTPS and encryption methods to ensure secure data transmission between the client and the server.
 
-> **Suggestion:** Describe the step-by-step logic for the location-based authentication.
->
-> 1.  User opens the React Native mobile app and logs in. The app receives and stores an authentication token (e.g., JWT).
-> 2.  The app requests the user's GPS coordinates from the device's location services.
-> 3.  The app sends a `POST` request to the `/api/location/verify` endpoint, including the coordinates and the user's auth token in the header.
-> 4.  The backend API receives the request, validates the token, and retrieves the allowed `AuthZone`(s) for that user.
-> 5.  The backend calculates if the user's coordinates are within the radius of any of the allowed zones.
-> 6.  The API returns a response to the app (e.g., `{ "access": "granted" }` or `{ "access": "denied" }`).
-> 7.  The mobile app UI updates to show the user's access status.
+- System Evaluation: A detailed report assessing the performance of the LBAS, including accuracy of location services, system latency, and user privacy considerations.
 
-## User Stories
+- Demonstration Scenarios: Real-world use cases demonstrating successful and unsuccessful login attempts based on the user's location, including geofencing, trusted locations, and security against location spoofing.
 
-> **Suggestion:** Write simple stories from the perspective of your users.
->
-> - **As a regular user,** I want to open the mobile app on-site and be automatically granted access to secure company resources without needing to type a password.
-> - **As a system administrator,** I want to be able to draw a new authentication zone on a map in the admin dashboard so I can quickly set up a new secure location.
-> - **As a security officer,** I want to view a log of all location verification attempts to monitor for unusual activity.
+- Dissertation etc..
