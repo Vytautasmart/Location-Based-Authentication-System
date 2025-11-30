@@ -1,50 +1,66 @@
-const express = require("express");
-const router = express.Router();
-const pool = require("../db/postgre");
-const bcrypt = require("bcryptjs");
+// Import necessary packages
+const express = require("express"); // Web framework for Node.js
+const router = express.Router(); // Router object to handle routes
+const pool = require("../db/postgre"); // Custom module for PostgreSQL connection pool
+const bcrypt = require("bcryptjs"); // Library for hashing passwords
 
-/* GET users listing. */
+/* 
+ * GET users listing. 
+ * This is a placeholder route and is not currently used by the main application.
+ */
 router.get("/", (req, res, next) => {
   res.send("respond with a resource");
 });
 
-/*
- * POST new user.
- * This route handles the creation of a new user in the database.
- * Input: A POST request to the "/users" endpoint with a JSON object in the request body,
- *        containing the `username` and `password`.
- * Output: A JSON object with a success message and the newly created user data, or an error message.
+/**
+ * @route   POST /users
+ * @desc    Register a new user in the database with a hashed password.
+ * @access  Public
  */
 router.post("/", async (req, res, next) => {
   // Destructure the username and password from the request body.
   const { username, password } = req.body;
 
   try {
-    // Generate a salt and hash the password
+    // Generate a salt for the password hash. A salt adds random data to the password before hashing
+    // to ensure that two identical passwords result in different hashes. 10 is the salt round,
+    // a measure of how computationally expensive the hash creation will be.
     const salt = await bcrypt.genSalt(10);
+    // Hash the user's password using the generated salt.
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Execute the SQL query to insert the new user into the "users" table.
+    // We store the `hashedPassword`, never the original plain-text password.
+    // "RETURNING *" tells the database to return the newly created user row, including the ID.
     const result = await pool.query(
       "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING *",
       [username, hashedPassword]
     );
-    // If the query is successful, send a 201 status
+    
+    // If the user was created successfully, send a 201 (Created) status code
+    // along with a success message and the new user object (excluding the password).
     res.status(201).json({
       message: "User created successfully",
       user: result.rows[0],
     });
   } catch (err) {
-    // Check if the error is a unique violation
+    // This block catches errors that occur during the database operation.
+    // We check for a specific error code from PostgreSQL.
     if (err.code === '23505') {
+      // '23505' is the code for a "unique_violation". In this table, it means the username already exists.
+      // We return a 400 (Bad Request) status with a user-friendly error message.
       return res.status(400).json({ message: "Username already exists." });
     }
-    // For other errors, pass them to the default error handler
+    // For any other unexpected errors, we log them and pass them to the global error handler.
     console.error(err);
     next(err);
   }
 });
 
+/*
+ * This is another placeholder route and is not part of the main application functionality.
+ * Note: The path "./cool" is likely a typo and should be "/cool".
+ */
 router.get("./cool", (req, res, next) => {
   res.send("Youre so cool");
 });

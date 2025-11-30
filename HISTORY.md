@@ -1,5 +1,30 @@
 # Gemini Task History
 
+## November 30, 2025
+
+### Feature: User Authentication System
+
+*   **Login and Registration Pages:**
+    *   The main page (`/`) was converted into a user login page.
+    *   A new registration page was created at `/register`.
+    *   Client-side JavaScript was implemented for both pages (`main.js` and `register.js`) to handle form submissions and provide user feedback.
+
+*   **Backend Authentication Logic:**
+    *   The `/api/auth/login` endpoint was created to handle user authentication.
+    *   The login logic now connects to the PostgreSQL database, retrieves the user by username, and securely compares the provided password with the stored hash using `bcrypt`.
+    *   Upon successful login, the server generates and returns a JSON Web Token (JWT).
+
+*   **Error Handling and Bug Fixes:**
+    *   Added specific error handling to the user registration route (`/users`) to gracefully manage attempts to register a username that already exists, returning a user-friendly error message instead of crashing the server.
+    *   Fixed a critical SQL syntax error in the login route that was causing a `500 Internal Server Error`.
+    *   Corrected a frontend issue by adding a missing HTML element to the login page, allowing success/error messages to be displayed correctly.
+
+*   **Code Documentation:**
+    *   Added detailed, explanatory comments to all major backend and frontend files (`app.js`, `routes/*.js`, `db/postgre.js`, `public/javascripts/*.js`) to improve code readability and maintainability.
+
+*   **Repository Management:**
+    *   Committed all new features and fixes to the Git repository with descriptive, conventional commit messages.
+
 ## November 29, 2025
 
 ### Project Cleanup and UI Implementation

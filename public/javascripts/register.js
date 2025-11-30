@@ -1,38 +1,47 @@
-// This script runs after the HTML document has been fully loaded.
+// This event listener ensures that the script runs only after the entire HTML document has been loaded.
 document.addEventListener("DOMContentLoaded", () => {
-    // Get references to the HTML elements we need to interact with.
+    // Get references to the HTML elements from the registration form.
     const usernameInput = document.getElementById("username");
     const passwordInput = document.getElementById("password");
     const submitBtn = document.getElementById("submitBtn");
-    const messageDiv = document.getElementById("message");
+    const messageDiv = document.getElementById("message"); // The div for displaying feedback.
 
-    // Add a click event listener to the submit button.
+    // Attach a 'click' event listener to the registration button.
     submitBtn.addEventListener("click", () => {
-        // Create a JavaScript object to hold the user's input.
+        // Create a user object from the values in the input fields.
         const user = {
             username: usernameInput.value,
             password: passwordInput.value
         };
 
-        // Use the fetch API to send the user data to the server.
+        // Use the Fetch API to send the new user data to the server's registration endpoint.
         fetch("/users", {
-            method: "POST", // Specify the HTTP method.
+            method: "POST", // Use the POST method to create a new resource.
             headers: {
-                "Content-Type": "application/json" // Tell the server that we are sending JSON data.
+                // This header tells the server that the request body is in JSON format.
+                "Content-Type": "application/json"
             },
-            body: JSON.stringify(user) // Convert the JavaScript object to a JSON string.
+            // Convert the JavaScript `user` object into a JSON string.
+            body: JSON.stringify(user)
         })
-        .then(response => response.json()) // Parse the JSON response from the server.
+        // When the server responds, parse the JSON body.
+        .then(response => response.json())
+        // This `.then()` block handles the data from the server's response.
         .then(data => {
-            console.log("Success:", data);
+            console.log("Success:", data); // Log the response for debugging.
+            // The backend sends a `user` object on successful registration.
             if (data.user) {
+                // Display a success message.
                 messageDiv.textContent = "User registered successfully!";
                 messageDiv.style.color = "green";
             } else {
+                // If there's no `user` object, registration failed.
+                // Display the error message sent from the backend (e.g., "Username already exists.").
                 messageDiv.textContent = data.message || "An error occurred.";
                 messageDiv.style.color = "red";
             }
         })
+        // This `.catch()` block handles any network errors.
         .catch((error) => {
             console.error("Error:", error);
             messageDiv.textContent = "Error registering user. See console for details.";
