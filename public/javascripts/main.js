@@ -1,39 +1,54 @@
-// This script runs after the HTML document has been fully loaded.
+// This event listener ensures that the script runs only after the entire HTML document has been loaded and parsed.
 document.addEventListener("DOMContentLoaded", () => {
-    // Get references to the HTML elements we need to interact with.
-    const usernameInput = document.getElementById("username");
-    const passwordInput = document.getElementById("password");
-    const submitBtn = document.getElementById("submitBtn");
+  // Get references to the HTML elements we need to interact with from the login form.
+  const usernameInput = document.getElementById("username");
+  const passwordInput = document.getElementById("password");
+  const submitBtn = document.getElementById("submitBtn");
+  const messageDiv = document.getElementById("message"); // The div where we will display feedback to the user.
 
-    // Add a click event listener to the submit button.
-    submitBtn.addEventListener("click", () => {
-        // Create a JavaScript object to hold the user's input.
-        // Input: The values from the username and password input fields.
-        const user = {
-            username: usernameInput.value,
-            password: passwordInput.value
-        };
+  // Attach a 'click' event listener to the login button.
+  submitBtn.addEventListener("click", () => {
+    // Create a user object from the values entered in the input fields.
+    const user = {
+      username: usernameInput.value,
+      password: passwordInput.value,
+    };
 
-        // Use the fetch API to send the user data to the server.
-        // Output: A POST request to the "/users" endpoint with the user data as a JSON string in the request body.
-        fetch("/users", {
-            method: "POST", // Specify the HTTP method.
-            headers: {
-                "Content-Type": "application/json" // Tell the server that we are sending JSON data.
-            },
-            body: JSON.stringify(user) // Convert the JavaScript object to a JSON string.
-        })
-        .then(response => response.json()) // Parse the JSON response from the server.
-        .then(data => {
-            // Log the success message from the server to the console.
-            console.log("Success:", data);
-            // Show a simple alert to the user.
-            alert("User data sent to server. Check the server console.");
-        })
-        .catch((error) => {
-            // Log any errors to the console.
-            console.error("Error:", error);
-            alert("Error sending user data. See the browser console for details.");
-        });
-    });
+    // Use the Fetch API to send the user data to the server's login endpoint.
+    fetch("/api/auth/login", {
+      method: "POST", // We are sending data, so we use the POST method.
+      headers: {
+        // This header tells the server that the request body is in JSON format.
+        "Content-Type": "application/json",
+      },
+      // Convert the JavaScript `user` object into a JSON string for transmission.
+      body: JSON.stringify(user),
+    })
+      // When the server responds, parse the JSON body of the response.
+      .then((response) => response.json())
+      // This `.then()` block handles the data parsed from the successful server response.
+      .then((data) => {
+        console.log("Success:", data); // Log the server response for debugging.
+        // Check if the server response contains a JWT token.
+        if (data.token) {
+          // If a token is present, the login was successful.
+          messageDiv.textContent = "Logged in successfully!";
+          messageDiv.style.color = "green";
+          // As a next step, you could store the token and redirect the user.
+          // For example:
+          // localStorage.setItem('token', data.token);
+          // window.location.href = '/dashboard';
+        } else {
+          // If there's no token, the login failed. Display the error message from the server.
+          messageDiv.textContent = data.msg || "Login failed.";
+          messageDiv.style.color = "red";
+        }
+      })
+      // This `.catch()` block handles any network errors or issues with the fetch request itself.
+      .catch((error) => {
+        console.error("Error:", error);
+        messageDiv.textContent = "Error logging in. See console for details.";
+        messageDiv.style.color = "red";
+      });
+  });
 });
