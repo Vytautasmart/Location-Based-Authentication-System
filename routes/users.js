@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../db/postgre");
+const bcrypt = require("bcryptjs");
 
 /* GET users listing. */
 router.get("/", (req, res, next) => {
@@ -19,21 +20,26 @@ router.post("/", async (req, res, next) => {
   const { username, password } = req.body;
 
   try {
+    // Generate a salt and hash the password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
     // Execute the SQL query to insert the new user into the "users" table.
-    // The "$1" and "$2" are placeholders for the username and password values, which helps prevent SQL injection attacks.
-    // "RETURNING *" tells the database to return the newly created row.
     const result = await pool.query(
       "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING *",
-      [username, password]
+      [username, hashedPassword]
     );
-    // If the query is successful, send a 201 (Created) status code and a JSON response with a success message
-    // and the data of the newly created user.
+    // If the query is successful, send a 201 status
     res.status(201).json({
       message: "User created successfully",
       user: result.rows[0],
     });
   } catch (err) {
-    // If there is an error, log it to the console and pass it to the error handling middleware.
+    // Check if the error is a unique violation
+    if (err.code === '23505') {
+      return res.status(400).json({ message: "Username already exists." });
+    }
+    // For other errors, pass them to the default error handler
     console.error(err);
     next(err);
   }
