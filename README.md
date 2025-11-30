@@ -22,61 +22,62 @@ The system will work by collecting the user's current location during login atte
 
 ---
 
-## Development TODO
+## Mobile Client Strategy
 
-The items below were part of the initial plan. Many have been completed or are in progress. The new plan for React Native is the main focus for future development.
+To achieve location-based authentication, a mobile device is required to provide GPS coordinates. Below are two distinct strategies for implementing this mobile component.
 
-### 1. Initial Setup (Largely Completed)
-- Connect to the database and send the payload.
-- Ensure the database connection is working correctly.
-- Send the username and password from the login form to the database.
-- Return a success message to the client.
+---
 
-### 2. Future Development (In Progress / Next Steps)
-- Implement JWT for session management. *(Completed)*
-- Explore OAuth for additional authentication features.
-- Design the main application page, including a QR code scanner for the mobile version.
-- Build the front-end registration page using React Native for the mobile application.
-- Investigate and integrate the Google Location API.
+### Option 1: Native Mobile App (React Native)
 
-### 3. React Native Camera Integration Plan
-- **Environment Setup:**
-  - Initialize a new React Native project within the repository (e.g., in a `/mobile` directory).
-  - Ensure the development environment is configured for both iOS and Android as per the React Native documentation.
-- **Camera Library Integration:**
-  - Research and choose a camera library (e.g., `react-native-vision-camera` for performance or the community-supported `react-native-camera`).
-  - Install and link the chosen library according to its installation instructions.
-- **Permissions Handling:**
-  - Implement logic to request camera permissions from the user on both iOS and Android.
-  - Add necessary permission descriptions to `Info.plist` (for iOS) and `AndroidManifest.xml` (for Android).
-- **Camera Component:**
-  - Create a new React Native component to render the live camera view.
-  - Add a button or touchable overlay to trigger photo capture.
-- **Image Handling:**
-  - Implement a function to handle the captured image data.
-  - For now, display the captured image on the screen as a preview to confirm functionality.
-  - (Future) Plan how the captured image will be used (e.g., sending to the server, processing for QR codes, etc.).
+This approach involves building a full, installable mobile application for iOS and Android.
 
-### 4. Location Authorization Plan
-- **Database Schema Update:**
-  - Create a new table, `auth_zones`, to store geofence data.
-  - The table should include columns like `zone_id`, `name`, `latitude`, `longitude`, and `radius_meters`.
-  - Consider adding a joining table to link users to specific zones if access is not global.
+#### Implementation Plan
+1.  **Environment Setup:** Initialize a React Native project and configure the development environment for iOS and Android.
+2.  **Library Integration:** Integrate native libraries for key functionalities:
+    - **Geolocation:** Use a library like `react-native-geolocation-service` to access the device's GPS.
+    - **Camera:** (If QR code scanning is desired from within the app) Use a library like `react-native-vision-camera` to access the camera.
+3.  **Permissions Handling:** Implement logic to request Camera and Location permissions on both platforms, updating `Info.plist` (iOS) and `AndroidManifest.xml` (Android) accordingly.
+4.  **UI/UX Development:** Build the application's user interface, including login screens, a home/dashboard screen, and the UI for location verification.
+5.  **API Communication:** Integrate with the backend to log in users and send GPS coordinates to the location verification endpoint.
 
-- **Backend API for Geofence Management:**
-  - Create a new route file (e.g., `routes/zones.js`) for managing authentication zones.
-  - Implement secure API endpoints for administrators to perform CRUD (Create, Read, Update, Delete) operations on the `auth_zones` table.
-  - These endpoints will allow an admin to define, view, and modify the trusted geographical areas.
+#### Benefits
+- **Most Seamless User Experience:** Provides a smooth, integrated experience without leaving the app.
+- **Deeper Native Integration:** Better and more reliable access to device APIs like location and camera.
+- **Advanced Features:** Enables future capabilities like push notifications, background location checks, or offline functionality.
+- **App Store Presence:** Can be published to the Apple App Store and Google Play Store.
 
-- **Core Location Verification Logic:**
-  - Create a new API endpoint, for example `POST /api/auth/verify-location`.
-  - This endpoint will receive the user's current `latitude` and `longitude` from the mobile client.
-  - The backend will fetch the authorized zones for that user from the database.
-  - Implement a geospatial calculation (e.g., the Haversine formula) to determine if the user's coordinates fall within the radius of any of the authorized zones.
-  - The API will return a success or failure response based on this calculation (e.g., `{ "access": "granted" }` or `{ "access": "denied" }`).
+#### Drawbacks
+- **High Development Overhead:** Requires significant effort to build, test, and maintain a separate codebase for a mobile app.
+- **Complex Deployments:** The process of submitting to and getting approved by app stores is complex and time-consuming.
+- **User Friction:** Requires users to find, download, and install an application from an app store.
 
-- **React Native Client Integration:**
-  - Integrate a geolocation library into the React Native project (e.g., `react-native-geolocation-service`).
-  - Implement logic to request location permissions from the user.
-  - On the login screen or a dedicated "authenticate" screen, fetch the user's current GPS coordinates.
-  - Send these coordinates to the `POST /api/auth/verify-location` endpoint on the backend and handle the response to grant or deny access within the app.
+---
+
+### Option 2: QR Code to Web-Based Verification
+
+This approach avoids a full mobile app by using a QR code on the desktop web app to initiate a location check on the user's mobile browser.
+
+#### Implementation Plan
+1.  **Backend: Session Token Generation:** When a user logs in on desktop, generate a unique, short-lived session token and store it.
+2.  **Frontend: QR Code Display:** On the desktop web app, display a QR code that contains a secure URL with the session token (e.g., `https://your-app.com/verify?token=abc123`).
+3.  **Mobile Web Page:** Create a simple, mobile-friendly HTML page at the `/verify` URL. This page must be served over **HTTPS**.
+    - The page will have a single "Verify My Location" button.
+4.  **Frontend: Geolocation Request:** When the user taps the button, use the browser's Geolocation API to request their GPS coordinates. This will trigger a permission prompt from the browser.
+5.  **Backend: Location Verification:**
+    - The mobile web page sends the token and the GPS coordinates to a new backend endpoint (e.g., `POST /api/auth/verify-web-location`).
+    - The backend validates the token, checks the location against the authorized geofences, and marks the desktop session as "verified."
+6.  **Real-time Update (Polling or WebSockets):** The original desktop web app must be updated in real-time.
+    - **Option A (Polling):** The desktop page repeatedly asks the backend, "Has my session been verified yet?"
+    - **Option B (WebSockets):** Establish a WebSocket connection between the desktop and the server for instant, real-time communication once the location is verified.
+
+#### Benefits
+- **Drastically Lower Development Cost:** Avoids native app development entirely, relying on simple web technologies.
+- **No Installation Required:** Users do not need to download anything; they can use their phone's standard camera and browser.
+- **Faster to Prototype:** A functional proof-of-concept can be built very quickly.
+
+#### Drawbacks
+- **Less Seamless User Experience:** The user journey is more complex (scan -> open browser -> tap button -> grant permission).
+- **HTTPS is a Hard Requirement:** The browser's Geolocation API will not work on insecure (HTTP) pages.
+- **Requires Real-time Communication:** Adds the complexity of implementing WebSockets or polling to sync the desktop and mobile sessions.
+- **Limited Functionality:** This approach cannot support more advanced features like push notifications or background tasks.
