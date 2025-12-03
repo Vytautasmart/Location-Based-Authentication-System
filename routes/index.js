@@ -27,5 +27,14 @@ router.get("/register", function (req, res, next) {
   res.sendFile(path.join(__dirname, "../public", "register.html"));
 });
 
+/**
+ * @route   GET /test-location
+ * @desc    Serves the location testing page.
+ * @access  Public
+ */
+router.get("/test-location", function (req, res, next) {
+  res.sendFile(path.join(__dirname, "../public", "test_location.html"));
+});
+
 // Export the router so it can be used by the main application file (app.js).
 module.exports = router;

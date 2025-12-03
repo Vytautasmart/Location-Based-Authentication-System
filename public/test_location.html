@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location Test Page</title>
+    <link rel="stylesheet" href="/stylesheets/style.css">
+</head>
+<body>
+    <h1>Location Authorization Test</h1>
+    <p>Use this page to test if a given set of coordinates is within an authorized zone.</p>
+
+    <form id="locationForm">
+        <div>
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" value="testuser" required>
+        </div>
+        <div>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" value="password" required>
+        </div>
+        <div>
+            <label for="latitude">Latitude:</label>
+            <input type="text" id="latitude" name="latitude" required>
+        </div>
+        <div>
+            <label for="longitude">Longitude:</label>
+            <input type="text" id="longitude" name="longitude" required>
+        </div>
+        <button type="submit">Test Location</button>
+    </form>
+
+    <hr>
+
+    <h2>Live Data Output</h2>
+    
+    <h3>Request Data:</h3>
+    <pre id="requestData"></pre>
+
+    <h3>Response Data:</h3>
+    <pre id="responseData"></pre>
+
+    <script src="/javascripts/test_location.js"></script>
+</body>
+</html>

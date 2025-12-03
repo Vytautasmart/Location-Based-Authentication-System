@@ -124,3 +124,4 @@ The following tests were performed to verify the functionality:
 *   [ ] Implement a join table to associate users with authorized zones for more granular control.
 *   [ ] Enhance the frontend to provide a user interface for managing authorized zones.
 *   [ ] Implement the mobile client strategy (either as a native app or a web-based verification flow).
+*   [ ] Create a dedicated page where users can input location coordinates to test the authorization logic.
