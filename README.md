@@ -81,3 +81,46 @@ This approach avoids a full mobile app by using a QR code on the desktop web app
 - **HTTPS is a Hard Requirement:** The browser's Geolocation API will not work on insecure (HTTP) pages.
 - **Requires Real-time Communication:** Adds the complexity of implementing WebSockets or polling to sync the desktop and mobile sessions.
 - **Limited Functionality:** This approach cannot support more advanced features like push notifications or background tasks.
+
+---
+
+## Project Status
+
+### Current Functionality
+
+The application currently has the following features:
+
+*   **User Authentication:** Users can register and log in with a username and password. User credentials are securely stored in a PostgreSQL database with hashed passwords.
+*   **JWT-based API Authentication:** The API uses JSON Web Tokens (JWTs) for authenticating requests.
+*   **Location-Based Access Control:** The application can now grant or deny access based on a user's geographical location.
+*   **Authorized Zones:** The system supports the creation of authorized zones with a name, latitude, longitude, and radius. These zones are stored in the database.
+*   **Location Verification:** The `locationService` uses the Haversine formula to determine if a user's location is within an authorized zone.
+*   **API Endpoints:**
+    *   `POST /api/auth/login`: Authenticates a user and returns a JWT.
+    *   `POST /api/auth/access`: Orchestrates the full authentication and location verification process.
+    *   `POST /api/zones`: Creates a new authorized zone.
+    *   `POST /users`: Registers a new user.
+    *   `/`: Serves the login page.
+    *   `/register`: Serves the registration page.
+
+### Testing
+
+The following tests were performed to verify the functionality:
+
+1.  **Database Migration:** A migration script was created and executed to add the `authorized_zones` table to the database.
+2.  **Authorized Zone Creation:** A new authorized zone was successfully created using the `/api/zones` endpoint. The zone was created for the University of Greenwich with a 500-meter radius.
+3.  **Location-Based Access Control:** The `/api/auth/access` endpoint was tested with two scenarios:
+    *   **Inside the authorized zone:** A request was sent with the coordinates of the University of Greenwich. The access was correctly **granted**.
+    *   **Outside the authorized zone:** A request was sent with the coordinates of the London Eye. The access was correctly **denied**.
+4.  **Troubleshooting:**
+    *   **Asynchronous Test Execution:** The initial tests appeared to fail due to the asynchronous nature of the test scripts. The test scripts were updated to use `async/await` to ensure the tests were executed in the correct order.
+    *   **Server Process Management:** The server process was manually restarted to ensure the latest code changes were loaded.
+
+### TODO List
+
+*   [ ] Implement update and delete functionality for authorized zones in `/api/zones`.
+*   [ ] Add authentication middleware to `/api/zones` to secure zone management endpoints.
+*   [ ] Consider safeguards against location spoofing attempts (e.g., through IP manipulation or GPS apps).
+*   [ ] Implement a join table to associate users with authorized zones for more granular control.
+*   [ ] Enhance the frontend to provide a user interface for managing authorized zones.
+*   [ ] Implement the mobile client strategy (either as a native app or a web-based verification flow).

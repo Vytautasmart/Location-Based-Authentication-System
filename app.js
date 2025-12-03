@@ -9,6 +9,7 @@ const logger = require("morgan"); // For logging HTTP request details
 const indexRouter = require("./routes/index"); // Handles routes for serving HTML pages (/, /register)
 const usersRouter = require("./routes/users"); // Handles routes for user registration (/users)
 const authRouter = require('./routes/auth');   // Handles routes for authentication (/api/auth/login)
+const zonesRouter = require('./routes/zones');   // Handles routes for managing authorized zones.
 
 // Initialize the Express application
 const app = express();
@@ -33,6 +34,7 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use("/", indexRouter); // Routes for serving pages
 app.use("/users", usersRouter); // Routes for user registration
 app.use('/api/auth', authRouter); // Routes for authentication API
+app.use('/api/zones', zonesRouter); // Routes for managing authorized zones
 
 // --- Error Handling ---
 
