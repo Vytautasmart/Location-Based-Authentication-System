@@ -5,6 +5,8 @@ const bcrypt = require('bcryptjs'); // Library for hashing passwords
 const jwt = require('jsonwebtoken'); // Library for creating JSON Web Tokens
 const pool = require('../db/postgre'); // Custom module for PostgreSQL connection pool
 const settings = require('../settings.json'); // Application settings, including JWT secret
+const locationService = require('../services/locationService');
+const authorizationService = require('../services/authorizationService');
 
 /**
  * @route   POST /api/auth/login
@@ -66,6 +68,68 @@ router.post('/login', async (req, res) => {
         );
     } catch (err) {
         // If any server-side error occurs, log it and send a generic 500 status.
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
+
+/**
+ * @route   POST /api/auth/access
+ * @desc    Orchestrate location-based authentication and authorization.
+ * @access  Public
+ */
+router.post('/access', async (req, res) => {
+    // Destructure credentials and location data from the request body
+    const { username, password, location } = req.body;
+
+    // Validate essential inputs
+    if (!username || !password || !location) {
+        return res.status(400).json({ msg: 'Please provide username, password, and location' });
+    }
+
+    try {
+        // --- Step 1: Standard User Authentication ---
+        const userResult = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+        if (userResult.rows.length === 0) {
+            return res.status(400).json({ msg: 'Invalid credentials' });
+        }
+        const user = userResult.rows[0];
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ msg: 'Invalid credentials' });
+        }
+
+        // --- Step 2: Location Verification ---
+        // Call the location service to check if the user is in an authorized zone
+        const isLocationVerified = await locationService.verifyLocation(location);
+
+        // --- Step 3: Authorization ---
+        // Call the authorization service to get the final access decision
+        const authorizationResult = await authorizationService.grantAccess(user, isLocationVerified);
+
+        // --- Step 4: Respond to the client ---
+        // Include a JWT if access is granted, so the client can make subsequent authenticated requests
+        if (authorizationResult.access === 'granted') {
+            const payload = { user: { id: user.id } };
+            jwt.sign(
+                payload,
+                settings.jwt_secret,
+                { expiresIn: 3600 },
+                (err, token) => {
+                    if (err) throw err;
+                    res.json({
+                        ...authorizationResult,
+                        token // Add the token to the response
+                    });
+                }
+            );
+        } else {
+            // If access is denied, just send the authorization result
+            res.status(403).json(authorizationResult);
+        }
+
+    } catch (err) {
         console.error(err.message);
         res.status(500).send('Server error');
     }
