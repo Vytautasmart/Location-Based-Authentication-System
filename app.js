@@ -10,6 +10,7 @@ const indexRouter = require("./routes/index"); // Handles routes for serving HTM
 const usersRouter = require("./routes/users"); // Handles routes for user registration (/users)
 const authRouter = require('./routes/auth');   // Handles routes for authentication (/api/auth/login)
 const zonesRouter = require('./routes/zones');   // Handles routes for managing authorized zones.
+const qrRouter = require('./routes/qr'); // Handles routes for QR code location capture
 
 // Initialize the Express application
 const app = express();
@@ -35,6 +36,7 @@ app.use("/", indexRouter); // Routes for serving pages
 app.use("/users", usersRouter); // Routes for user registration
 app.use('/api/auth', authRouter); // Routes for authentication API
 app.use('/api/zones', zonesRouter); // Routes for managing authorized zones
+app.use('/qr', qrRouter); // Routes for QR code location capture
 
 // --- Error Handling ---
 
