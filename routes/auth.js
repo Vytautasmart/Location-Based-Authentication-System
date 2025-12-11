@@ -1,12 +1,12 @@
-const express = require('express');
-const router = express.Router();
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const pool = require('../db/postgre');
-const settings = require('../settings.json');
+// Import necessary packages
+const express = require('express'); // Web framework for Node.js
+const router = express.Router(); // Router object to handle routes
+const bcrypt = require('bcryptjs'); // Library for hashing passwords
+const jwt = require('jsonwebtoken'); // Library for creating JSON Web Tokens
+const pool = require('../db/postgre'); // Custom module for PostgreSQL connection pool
+const settings = require('../settings.json'); // Application settings, including JWT secret
 const locationService = require('../services/locationService');
 const authorizationService = require('../services/authorizationService');
-const ipService = require('../services/ipService');
 
 /**
  * @route   POST /api/auth/login
@@ -101,23 +101,16 @@ router.post('/access', async (req, res) => {
             return res.status(400).json({ msg: 'Invalid credentials' });
         }
 
-        // --- Step 2: Location Spoofing Check ---
-        const ipLocation = await ipService.getLocationFromIp(req.ip);
-        if (ipLocation) {
-            const distance = locationService.getDistance(latitude, longitude, ipLocation.lat, ipLocation.lon);
-            // If distance is greater than 50km, suspect spoofing
-            if (distance > 50000) { 
-                return res.status(403).json({ msg: 'Location spoofing suspected. Access denied.' });
-            }
-        }
-
-        // --- Step 3: Location Verification ---
+        // --- Step 2: Location Verification ---
+        // Call the location service to check if the user is in an authorized zone
         const isLocationVerified = await locationService.verifyLocation({ latitude, longitude });
 
-        // --- Step 4: Authorization ---
+        // --- Step 3: Authorization ---
+        // Call the authorization service to get the final access decision
         const authorizationResult = await authorizationService.grantAccess(user, isLocationVerified);
 
-        // --- Step 5: Respond to the client ---
+        // --- Step 4: Respond to the client ---
+        // Include a JWT if access is granted, so the client can make subsequent authenticated requests
         if (authorizationResult.access === 'granted') {
             const payload = { user: { id: user.id, role: user.role } };
             jwt.sign(
@@ -128,11 +121,12 @@ router.post('/access', async (req, res) => {
                     if (err) throw err;
                     res.json({
                         ...authorizationResult,
-                        token
+                        token // Add the token to the response
                     });
                 }
             );
         } else {
+            // If access is denied, just send the authorization result
             if (!isLocationVerified) {
                 return res.status(403).json({ msg: 'Access denied. You are not in an authorized location.' });
             }
