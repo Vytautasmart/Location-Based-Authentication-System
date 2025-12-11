@@ -72,4 +72,5 @@ const verifyLocation = async (locationData) => {
 
 module.exports = {
   verifyLocation,
+  getDistance,
 };
