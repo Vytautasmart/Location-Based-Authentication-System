@@ -1,12 +1,17 @@
-
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/postgre');
+const auth = require('../middleware/auth');
 
 // @route   POST /api/zones
 // @desc    Create a new authorized zone
-// @access  Private (TODO: Add authentication middleware)
-router.post('/', async (req, res) => {
+// @access  Private
+router.post('/', auth, async (req, res) => {
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ msg: 'Access denied. Only admins can create zones.' });
+    }
+
     const { name, latitude, longitude, radius } = req.body;
 
     if (!name || !latitude || !longitude || !radius) {

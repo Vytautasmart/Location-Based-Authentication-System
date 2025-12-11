@@ -49,7 +49,8 @@ router.post('/login', async (req, res) => {
         // It's good practice to only include non-sensitive information, like the user ID.
         const payload = {
             user: {
-                id: user.id 
+                id: user.id,
+                role: user.role
             }
         };
 
@@ -81,10 +82,10 @@ router.post('/login', async (req, res) => {
  */
 router.post('/access', async (req, res) => {
     // Destructure credentials and location data from the request body
-    const { username, password, location } = req.body;
+    const { username, password, latitude, longitude } = req.body;
 
     // Validate essential inputs
-    if (!username || !password || !location) {
+    if (!username || !password || !latitude || !longitude) {
         return res.status(400).json({ msg: 'Please provide username, password, and location' });
     }
 
@@ -102,7 +103,7 @@ router.post('/access', async (req, res) => {
 
         // --- Step 2: Location Verification ---
         // Call the location service to check if the user is in an authorized zone
-        const isLocationVerified = await locationService.verifyLocation(location);
+        const isLocationVerified = await locationService.verifyLocation({ latitude, longitude });
 
         // --- Step 3: Authorization ---
         // Call the authorization service to get the final access decision
@@ -111,7 +112,7 @@ router.post('/access', async (req, res) => {
         // --- Step 4: Respond to the client ---
         // Include a JWT if access is granted, so the client can make subsequent authenticated requests
         if (authorizationResult.access === 'granted') {
-            const payload = { user: { id: user.id } };
+            const payload = { user: { id: user.id, role: user.role } };
             jwt.sign(
                 payload,
                 settings.jwt_secret,
@@ -126,6 +127,9 @@ router.post('/access', async (req, res) => {
             );
         } else {
             // If access is denied, just send the authorization result
+            if (!isLocationVerified) {
+                return res.status(403).json({ msg: 'Access denied. You are not in an authorized location.' });
+            }
             res.status(403).json(authorizationResult);
         }
 
