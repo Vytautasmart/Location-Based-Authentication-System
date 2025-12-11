@@ -6,7 +6,7 @@
     "start": "node ./bin/www",
     "devstart": "nodemon ./bin/www",
     "serverstart": "SET DEBUG=Location-Based-Authentication-System:* & npm start",
-    "test": "jest"
+    "test": "jest --runInBand"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
