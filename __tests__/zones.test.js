@@ -5,8 +5,39 @@ const jwt = require('jsonwebtoken');
 const settings = require('../settings.json');
 
 describe('Zone Endpoints', () => {
+  beforeAll(async () => {
+    // Create the authorized_zones table for the test environment
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS authorized_zones (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        latitude REAL NOT NULL,
+        longitude REAL NOT NULL,
+        radius REAL NOT NULL
+      );
+    `);
+  });
+
   afterAll(() => {
     pool.end();
+  });
+
+  describe('GET /api/zones', () => {
+    beforeAll(async () => {
+      // Create some test zones
+      await pool.query('INSERT INTO authorized_zones (name, latitude, longitude, radius) VALUES ($1, $2, $3, $4)', ['Test Zone 1', 10, 10, 100]);
+      await pool.query('INSERT INTO authorized_zones (name, latitude, longitude, radius) VALUES ($1, $2, $3, $4)', ['Test Zone 2', 20, 20, 200]);
+    });
+
+    afterAll(async () => {
+      await pool.query("DELETE FROM authorized_zones WHERE name LIKE 'Test Zone %'");
+    });
+
+    it('should return all authorized zones', async () => {
+      const res = await request(app).get('/api/zones');
+      expect(res.statusCode).toEqual(200);
+      expect(res.body.length).toBeGreaterThanOrEqual(2);
+    });
   });
 
   describe('POST /api/zones', () => {

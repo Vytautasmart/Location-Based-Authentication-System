@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LBAS Demonstration</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="/stylesheets/style.css">
+    <style>
+        #map { height: 400px; }
+    </style>
+</head>
+<body>
+    <div id="navbar-placeholder"></div>
+    <h1>Location-Based Authentication System - Demonstration</h1>
+
+    <div id="demo-container">
+        <div id="user-section">
+            <h2>User</h2>
+            <input type="text" id="username" placeholder="Username" value="testuser">
+            <input type="password" id="password" placeholder="Password" value="password">
+        </div>
+
+        <div id="location-section">
+            <h2>Location Simulation</h2>
+            <p>Click on the map to set your location.</p>
+            <div id="map"></div>
+            <p>Latitude: <span id="lat"></span>, Longitude: <span id="lng"></span></p>
+            <button id="loginBtn">Login with this Location</button>
+        </div>
+
+        <div id="result-section">
+            <h2>Result</h2>
+            <div id="message"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="/javascripts/demo.js"></script>
+    <script src="/javascripts/utils.js"></script>
+</body>
+</html>

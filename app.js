@@ -13,6 +13,7 @@ const zonesRouter = require('./routes/zones');   // Handles routes for managing 
 
 // Initialize the Express application
 const app = express();
+app.set('trust proxy', true);
 
 // --- Middleware Setup ---
 // Middleware are functions that execute during the lifecycle of a request to the server.
@@ -32,7 +33,7 @@ app.use(express.static(path.join(__dirname, "public")));
 // --- Route Handling ---
 // Mount the imported route modules to specific URL prefixes.
 app.use("/", indexRouter); // Routes for serving pages
-app.use("/users", usersRouter); // Routes for user registration
+app.use('/api/users', usersRouter); // Routes for user registration
 app.use('/api/auth', authRouter); // Routes for authentication API
 app.use('/api/zones', zonesRouter); // Routes for managing authorized zones
 

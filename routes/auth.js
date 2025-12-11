@@ -81,6 +81,7 @@ router.post('/login', async (req, res) => {
  * @access  Public
  */
 router.post('/access', async (req, res) => {
+    const startTime = Date.now();
     // Destructure credentials and location data from the request body
     const { username, password, latitude, longitude } = req.body;
 
@@ -89,28 +90,58 @@ router.post('/access', async (req, res) => {
         return res.status(400).json({ msg: 'Please provide username, password, and location' });
     }
 
+    let user;
+    let isMatch = false;
+    let isLocationVerified = false;
+    let spoofingCheckResult = { isSpoofed: false, ipLatitude: null, ipLongitude: null, distance: null };
+    let authorizationResult = { access: 'denied' };
+
     try {
         // --- Step 1: Standard User Authentication ---
         const userResult = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-        if (userResult.rows.length === 0) {
-            return res.status(400).json({ msg: 'Invalid credentials' });
-        }
-        const user = userResult.rows[0];
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ msg: 'Invalid credentials' });
+        if (userResult.rows.length > 0) {
+            user = userResult.rows[0];
+            isMatch = await bcrypt.compare(password, user.password);
         }
 
-        // --- Step 2: Location Verification ---
-        // Call the location service to check if the user is in an authorized zone
-        const isLocationVerified = await locationService.verifyLocation({ latitude, longitude });
+        if (user && isMatch) {
+            // Bipass spoofing check for admin users
+            if (user.role !== 'admin') {
+                // --- Step 2: Location Spoofing Check ---
+                spoofingCheckResult = await locationService.isLocationSpoofed(req.ip, latitude, longitude);
+            }
 
-        // --- Step 3: Authorization ---
-        // Call the authorization service to get the final access decision
-        const authorizationResult = await authorizationService.grantAccess(user, isLocationVerified);
+            if (!spoofingCheckResult.isSpoofed) {
+                // --- Step 3: Location Verification ---
+                isLocationVerified = await locationService.verifyLocation({ latitude, longitude });
 
-        // --- Step 4: Respond to the client ---
-        // Include a JWT if access is granted, so the client can make subsequent authenticated requests
+                // --- Step 4: Authorization ---
+                authorizationResult = await authorizationService.grantAccess(user, isLocationVerified);
+            }
+        }
+
+        const latency = Date.now() - startTime;
+        
+        // --- Log the attempt ---
+        const logQuery = `
+            INSERT INTO auth_logs(user_id, client_latitude, client_longitude, ip_address, ip_latitude, ip_longitude, is_location_verified, is_spoofed, access_granted, latency)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        `;
+        const logValues = [
+            user ? user.id : null,
+            latitude,
+            longitude,
+            req.ip,
+            spoofingCheckResult.ipLatitude,
+            spoofingCheckResult.ipLongitude,
+            isLocationVerified,
+            spoofingCheckResult.isSpoofed,
+            authorizationResult.access === 'granted',
+            latency
+        ];
+        await pool.query(logQuery, logValues);
+
+        // --- Step 5: Respond to the client ---
         if (authorizationResult.access === 'granted') {
             const payload = { user: { id: user.id, role: user.role } };
             jwt.sign(
@@ -121,16 +152,18 @@ router.post('/access', async (req, res) => {
                     if (err) throw err;
                     res.json({
                         ...authorizationResult,
-                        token // Add the token to the response
+                        token
                     });
                 }
             );
         } else {
-            // If access is denied, just send the authorization result
+             if (spoofingCheckResult.isSpoofed) {
+                return res.status(403).json({ msg: 'Access denied due to potential location spoofing.' });
+            }
             if (!isLocationVerified) {
                 return res.status(403).json({ msg: 'Access denied. You are not in an authorized location.' });
             }
-            res.status(403).json(authorizationResult);
+            res.status(400).json({ msg: 'Invalid credentials' });
         }
 
     } catch (err) {

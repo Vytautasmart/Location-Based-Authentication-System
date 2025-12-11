@@ -39,8 +39,8 @@ document.addEventListener("DOMContentLoaded", () => {
               messageDiv.style.color = "green";
               // As a next step, you could store the token and redirect the user.
               // For example:
-              // localStorage.setItem('token', data.token);
-              // window.location.href = '/dashboard';
+              localStorage.setItem('token', data.token);
+              window.location.href = '/dashboard.html';
             } else {
               // If there's no token, the login failed. Display the error message from the server.
               messageDiv.textContent = data.msg || "Login failed.";

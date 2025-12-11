@@ -15,7 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         // Use the Fetch API to send the new user data to the server's registration endpoint.
-        fetch("/users", {
+        fetch("/api/users", {
             method: "POST", // Use the POST method to create a new resource.
             headers: {
                 // This header tells the server that the request body is in JSON format.

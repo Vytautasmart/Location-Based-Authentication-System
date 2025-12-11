@@ -57,6 +57,18 @@ router.post("/", async (req, res, next) => {
   }
 });
 
+const auth = require('../middleware/auth');
+
+router.get('/me', auth, async (req, res) => {
+    try {
+        const user = await pool.query('SELECT id, username, role FROM users WHERE id = $1', [req.user.id]);
+        res.json(user.rows[0]);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
 /*
  * This is another placeholder route and is not part of the main application functionality.
  * Note: The path "./cool" is likely a typo and should be "/cool".

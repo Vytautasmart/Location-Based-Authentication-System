@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="/stylesheets/style.css">
+</head>
+<body>
+    <div id="navbar-placeholder"></div>
+    <h1>Welcome to your Dashboard</h1>
+    <div id="userInfo"></div>
+    <button id="logoutBtn">Logout</button>
+
+    <div id="admin-section" style="display: none;">
+        <h2>Zone Management</h2>
+        <form id="zone-form">
+            <input type="hidden" id="zone-id">
+            <input type="text" id="zone-name" placeholder="Zone Name" required>
+            <input type="number" id="zone-lat" placeholder="Latitude" required step="any">
+            <input type="number" id="zone-lng" placeholder="Longitude" required step="any">
+            <input type="number" id="zone-radius" placeholder="Radius (meters)" required>
+            <button type="submit">Save Zone</button>
+        </form>
+        <table id="zones-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Latitude</th>
+                    <th>Longitude</th>
+                    <th>Radius</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+
+    <script src="/javascripts/dashboard.js"></script>
+    <script src="/javascripts/utils.js"></script>
+</body>
+</html>

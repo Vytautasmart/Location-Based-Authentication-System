@@ -91,36 +91,37 @@ This approach avoids a full mobile app by using a QR code on the desktop web app
 The application currently has the following features:
 
 *   **User Authentication:** Users can register and log in with a username and password. User credentials are securely stored in a PostgreSQL database with hashed passwords.
-*   **JWT-based API Authentication:** The API uses JSON Web Tokens (JWTs) for authenticating requests.
+*   **Role-Based Access Control (RBAC):** The application now supports RBAC with "admin" and "user" roles.
+*   **JWT-based API Authentication:** The API uses JSON Web Tokens (JWTs) for authenticating requests. The JWT payload now includes the user's role.
 *   **Location-Based Access Control:** The application can now grant or deny access based on a user's geographical location.
 *   **Authorized Zones:** The system supports the creation of authorized zones with a name, latitude, longitude, and radius. These zones are stored in the database.
+*   **Secure Zone Creation:** The `/api/zones` endpoint is now protected, and only admin users can create new zones.
+*   **Location Spoofing Detection:** The application now includes a basic IP-based location spoofing detection mechanism.
 *   **Location Verification:** The `locationService` uses the Haversine formula to determine if a user's location is within an authorized zone.
+*   **QR Code Integration:** The QR code functionality has been simplified and integrated into the main login flow.
 *   **API Endpoints:**
     *   `POST /api/auth/login`: Authenticates a user and returns a JWT.
     *   `POST /api/auth/access`: Orchestrates the full authentication and location verification process.
-    *   `POST /api/zones`: Creates a new authorized zone.
+    *   `POST /api/zones`: Creates a new authorized zone (admin only).
     *   `POST /users`: Registers a new user.
     *   `/`: Serves the login page.
     *   `/register`: Serves the registration page.
 
 ### Testing
 
-The following tests were performed to verify the functionality:
+A testing framework using **Jest** and **Supertest** has been set up to automate API testing. The following tests have been implemented:
 
-1.  **Database Migration:** A migration script was created and executed to add the `authorized_zones` table to the database.
-2.  **Authorized Zone Creation:** A new authorized zone was successfully created using the `/api/zones` endpoint. The zone was created for the University of Greenwich with a 500-meter radius.
-3.  **Location-Based Access Control:** The `/api/auth/access` endpoint was tested with two scenarios:
-    *   **Inside the authorized zone:** A request was sent with the coordinates of the University of Greenwich. The access was correctly **granted**.
-    *   **Outside the authorized zone:** A request was sent with the coordinates of the London Eye. The access was correctly **denied**.
-4.  **Troubleshooting:**
-    *   **Asynchronous Test Execution:** The initial tests appeared to fail due to the asynchronous nature of the test scripts. The test scripts were updated to use `async/await` to ensure the tests were executed in the correct order.
-    *   **Server Process Management:** The server process was manually restarted to ensure the latest code changes were loaded.
+*   **JWT Expiration:** A test has been added to ensure that expired JWTs are correctly rejected.
+*   **Zone Creation:**
+    *   Tests to ensure that only authenticated admin users can create new zones.
+    *   A test to ensure that requests with missing fields are rejected.
+*   **Location Spoofing:**
+    *   A test to ensure that a user can log in when their device and IP locations are consistent.
+    *   A test to ensure that a user is denied access when their device and IP locations are far apart.
 
 ### TODO List
 
 *   [ ] Implement update and delete functionality for authorized zones in `/api/zones`.
-*   [ ] Add authentication middleware to `/api/zones` to secure zone management endpoints.
-*   [ ] Consider safeguards against location spoofing attempts (e.g., through IP manipulation or GPS apps).
 *   [ ] Implement a join table to associate users with authorized zones for more granular control.
 *   [ ] Enhance the frontend to provide a user interface for managing authorized zones.
 *   [ ] Implement the mobile client strategy (either as a native app or a web-based verification flow).

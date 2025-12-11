@@ -5,6 +5,7 @@
  */
 
 const pool = require("../db/postgre");
+const fetch = require('node-fetch');
 
 /**
  * Calculates the distance between two points on Earth using the Haversine formula.
@@ -70,6 +71,38 @@ const verifyLocation = async (locationData) => {
   }
 };
 
+
+const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
+    const result = { isSpoofed: false, ipLatitude: null, ipLongitude: null, distance: null };
+    if (!ip) {
+        return result; // Cannot verify without IP
+    }
+
+    try {
+        const response = await fetch(`http://ip-api.com/json/${ip}`);
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            result.ipLatitude = data.lat;
+            result.ipLongitude = data.lon;
+
+            const distance = getDistance(clientLatitude, clientLongitude, result.ipLatitude, result.ipLongitude);
+            result.distance = distance;
+
+            // If distance is greater than 100km, flag as potential spoofing
+            if (distance > 100000) { 
+                console.log(`Potential spoofing detected. IP location is more than 100km away from client location.`);
+                result.isSpoofed = true;
+            }
+        }
+        return result;
+    } catch (error) {
+        console.error('Error in IP geolocation:', error);
+        return result; // Fail safe
+    }
+};
+
 module.exports = {
   verifyLocation,
+  isLocationSpoofed
 };

@@ -27,6 +27,26 @@ router.get("/register", function (req, res, next) {
   res.sendFile(path.join(__dirname, "../public", "register.html"));
 });
 
+
+/**
+ * @route   GET /dashboard.html
+ * @desc    Serves the dashboard page.
+ * @access  Private
+ */
+router.get("/dashboard.html", function (req, res, next) {
+    res.sendFile(path.join(__dirname, "../public", "dashboard.html"));
+});
+
+
+/**
+ * @route   GET /demo.html
+ * @desc    Serves the demonstration page.
+ * @access  Public
+ */
+router.get("/demo.html", function (req, res, next) {
+    res.sendFile(path.join(__dirname, "../public", "demo.html"));
+});
+
 /**
  * @route   GET /test-location
  * @desc    Serves the location testing page.
