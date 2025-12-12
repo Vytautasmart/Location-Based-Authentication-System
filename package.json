@@ -17,7 +17,8 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "node-fetch": "^3.3.2",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "whatwg-url": "^15.1.0"
   },
   "devDependencies": {
     "jest": "^30.2.0",
