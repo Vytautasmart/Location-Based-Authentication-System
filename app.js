@@ -37,6 +37,7 @@ app.use('/api/users', usersRouter); // Routes for user registration
 app.use('/api/auth', authRouter); // Routes for authentication API
 app.use('/api/zones', zonesRouter); // Routes for managing authorized zones
 
+
 // --- Error Handling ---
 
 // Catch 404 errors. If a request doesn't match any of the routes above,

@@ -1,9 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const map = L.map('map').setView([51.505, -0.09], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
-
     const latSpan = document.getElementById('lat');
     const lngSpan = document.getElementById('lng');
     const usernameInput = document.getElementById('username');
@@ -11,17 +6,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginBtn = document.getElementById('loginBtn');
     const messageDiv = document.getElementById('message');
 
-    let selectedLocation = { lat: 51.505, lng: -0.09 };
-    latSpan.textContent = selectedLocation.lat;
-    lngSpan.textContent = selectedLocation.lng;
+    const initialLocation = { lat: 51.505, lng: -0.09 };
+    latSpan.textContent = initialLocation.lat;
+    lngSpan.textContent = initialLocation.lng;
+    let selectedLocation = initialLocation;
 
-    const marker = L.marker(selectedLocation).addTo(map);
+    const map = L.map('map').setView([initialLocation.lat, initialLocation.lng], 13);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    }).addTo(map);
 
-    map.on('click', function(e) {
+    const marker = L.marker([initialLocation.lat, initialLocation.lng]).addTo(map);
+
+    map.on('click', (e) => {
         selectedLocation = e.latlng;
+        marker.setLatLng(e.latlng);
         latSpan.textContent = selectedLocation.lat;
         lngSpan.textContent = selectedLocation.lng;
-        marker.setLatLng(selectedLocation);
     });
 
     // Fetch and display authorized zones
