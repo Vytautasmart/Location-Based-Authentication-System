@@ -7,57 +7,32 @@ const crypto = require('crypto');
 
 const locationService = require('../services/locationService');
 const authorizationService = require('../services/authorizationService');
+const passport = require('passport');
 
 /**
  * @route   POST /api/auth/login
  * @desc    Authenticate a user based on username and password, and return a JWT upon success.
  * @access  Public
  */
-router.post('/login', async (req, res) => {
-    // This route is not fully implemented for refresh tokens.
-    // For a full implementation, this route should also generate and send a refresh token.
-    const { username, password } = req.body;
-
-    if (!username || !password) {
-        return res.status(400).json({ msg: 'Please enter all fields' });
-    }
-
-    try {
-        const userResult = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-        
-        if (userResult.rows.length === 0) {
-            return res.status(400).json({ msg: 'Invalid credentials' });
+router.post('/login', passport.authenticate('local', { session: false }), (req, res) => {
+    // If this function gets called, authentication was successful.
+    // `req.user` contains the authenticated user.
+    const payload = {
+        user: {
+            id: req.user.id,
+            role: req.user.role
         }
+    };
 
-        const user = userResult.rows[0];
-        const isMatch = await bcrypt.compare(password, user.password);
-
-        if (!isMatch) {
-            return res.status(400).json({ msg: 'Invalid credentials' });
+    jwt.sign(
+        payload,
+        process.env.JWT_SECRET,
+        { expiresIn: '15m' }, // Short-lived access token
+        (err, token) => {
+            if (err) throw err;
+            res.json({ token });
         }
-
-        const payload = {
-            user: {
-                id: user.id,
-                role: user.role
-            }
-        };
-
-        jwt.sign(
-            payload,
-            process.env.JWT_SECRET,
-            { expiresIn: '15m' }, // Short-lived access token
-            (err, token) => {
-                if (err) throw err;
-                res.json({
-                    token
-                });
-            }
-        );
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
-    }
+    );
 });
 
 
@@ -66,30 +41,29 @@ router.post('/login', async (req, res) => {
  * @desc    Orchestrate location-based authentication and authorization.
  * @access  Public
  */
-router.post('/access', async (req, res) => {
-    const startTime = Date.now();
-    const { username, password, latitude, longitude } = req.body;
-
-    if (!username || !password || !latitude || !longitude) {
-        return res.status(400).json({ msg: 'Please provide username, password, and location' });
-    }
-
-    let user;
-    let isMatch = false;
-    let isLocationVerified = false;
-    let spoofingCheckResult = { isSpoofed: false, ipLatitude: null, ipLongitude: null, distance: null };
-    let authorizationResult = { access: 'denied' };
-
-    try {
-        const userResult = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-        if (userResult.rows.length > 0) {
-            user = userResult.rows[0];
-            isMatch = await bcrypt.compare(password, user.password);
+router.post('/access', (req, res, next) => {
+    passport.authenticate('local', { session: false }, async (err, user, info) => {
+        if (err) {
+            return next(err);
+        }
+        if (!user) {
+            return res.status(400).json({ msg: info.message || 'Invalid credentials' });
         }
 
-        const ip = req.headers['x-forwarded-for'] || req.ip;
+        const startTime = Date.now();
+        const { latitude, longitude } = req.body;
 
-        if (user && isMatch) {
+        if (!latitude || !longitude) {
+            return res.status(400).json({ msg: 'Please provide latitude and longitude' });
+        }
+
+        let isLocationVerified = false;
+        let spoofingCheckResult = { isSpoofed: false };
+        let authorizationResult = { access: 'denied' };
+        
+        try {
+            const ip = req.headers['x-forwarded-for'] || req.ip;
+
             if (user.role !== 'admin') {
                 spoofingCheckResult = await locationService.isLocationSpoofed(ip, latitude, longitude);
             }
@@ -98,73 +72,52 @@ router.post('/access', async (req, res) => {
                 isLocationVerified = await locationService.verifyLocation({ latitude, longitude });
                 authorizationResult = await authorizationService.grantAccess(user, isLocationVerified);
             }
-        }
 
-        const latency = Date.now() - startTime;
-        
-        const logQuery = `
-            INSERT INTO auth_logs(user_id, client_latitude, client_longitude, ip_address, ip_latitude, ip_longitude, is_location_verified, is_spoofed, access_granted, latency)
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        `;
-        const logValues = [
-            user ? user.id : null,
-            latitude,
-            longitude,
-            ip,
-            spoofingCheckResult.ipLatitude,
-            spoofingCheckResult.ipLongitude,
-            isLocationVerified,
-            spoofingCheckResult.isSpoofed,
-            authorizationResult.access === 'granted',
-            latency
-        ];
-        await pool.query(logQuery, logValues);
-
-        // --- Step 5: Respond to the client ---
-        if (authorizationResult.access === 'granted') {
-            const payload = { user: { id: user.id, role: user.role } };
+            const latency = Date.now() - startTime;
             
-            // 1. Create a short-lived access token
-            const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '15m' });
+            const logQuery = `
+                INSERT INTO auth_logs(user_id, client_latitude, client_longitude, ip_address, ip_latitude, ip_longitude, is_location_verified, is_spoofed, access_granted, latency)
+                VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            `;
+            await pool.query(logQuery, [
+                user.id, latitude, longitude, ip, spoofingCheckResult.ipLatitude, 
+                spoofingCheckResult.ipLongitude, isLocationVerified, 
+                spoofingCheckResult.isSpoofed, authorizationResult.access === 'granted', latency
+            ]);
 
-            // 2. Create a long-lived refresh token
-            const refreshToken = crypto.randomBytes(64).toString('hex');
-            const refreshTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+            if (authorizationResult.access === 'granted') {
+                const payload = { user: { id: user.id, role: user.role } };
+                const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '15m' });
+                const refreshToken = crypto.randomBytes(64).toString('hex');
+                const refreshTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-            // 3. Store the refresh token in the database
-            await pool.query(
-                'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
-                [user.id, refreshToken, refreshTokenExpiry]
-            );
+                await pool.query(
+                    'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
+                    [user.id, refreshToken, refreshTokenExpiry]
+                );
 
-            // 4. Send the refresh token in a secure, HttpOnly cookie
-            res.cookie('refreshToken', refreshToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
-                expires: refreshTokenExpiry,
-                sameSite: 'strict'
-            });
+                res.cookie('refreshToken', refreshToken, {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production',
+                    expires: refreshTokenExpiry,
+                    sameSite: 'strict'
+                });
 
-            // 5. Send the access token and authorization result in the JSON response
-            res.json({
-                ...authorizationResult,
-                token: accessToken
-            });
-
-        } else {
-             if (spoofingCheckResult.isSpoofed) {
-                return res.status(403).json({ msg: 'Access denied due to potential location spoofing.' });
+                res.json({ ...authorizationResult, token: accessToken });
+            } else {
+                if (spoofingCheckResult.isSpoofed) {
+                    return res.status(403).json({ msg: 'Access denied due to potential location spoofing.' });
+                }
+                if (!isLocationVerified) {
+                    return res.status(403).json({ msg: 'Access denied. You are not in an authorized location.' });
+                }
+                res.status(400).json({ msg: 'Authorization failed after location check.' });
             }
-            if (!isLocationVerified) {
-                return res.status(403).json({ msg: 'Access denied. You are not in an authorized location.' });
-            }
-            res.status(400).json({ msg: 'Invalid credentials' });
+        } catch (error) {
+            console.error(error.message);
+            res.status(500).send('Server error during location verification.');
         }
-
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
-    }
+    })(req, res, next);
 });
 
 /**

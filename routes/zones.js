@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/postgre');
-const auth = require('../middleware/auth');
+const passport = require('passport');
 const { checkRole } = require('../middleware/rbac');
 
 // @route   GET /api/zones
@@ -20,7 +20,7 @@ router.get('/', async (req, res) => {
 // @route   POST /api/zones
 // @desc    Create a new authorized zone
 // @access  Private
-router.post('/', [auth, checkRole('admin')], async (req, res) => {
+router.post('/', [passport.authenticate('jwt', { session: false }), checkRole('admin')], async (req, res) => {
     const { name, latitude, longitude, radius } = req.body;
 
     if (!name || !latitude || !longitude || !radius) {
@@ -43,7 +43,7 @@ router.post('/', [auth, checkRole('admin')], async (req, res) => {
 // @route   PUT /api/zones/:id
 // @desc    Update an authorized zone
 // @access  Private
-router.put('/:id', [auth, checkRole('admin')], async (req, res) => {
+router.put('/:id', [passport.authenticate('jwt', { session: false }), checkRole('admin')], async (req, res) => {
     const { name, latitude, longitude, radius } = req.body;
     const { id } = req.params;
 
@@ -66,7 +66,7 @@ router.put('/:id', [auth, checkRole('admin')], async (req, res) => {
 // @route   DELETE /api/zones/:id
 // @desc    Delete an authorized zone
 // @access  Private
-router.delete('/:id', [auth, checkRole('admin')], async (req, res) => {
+router.delete('/:id', [passport.authenticate('jwt', { session: false }), checkRole('admin')], async (req, res) => {
     const { id } = req.params;
 
     try {

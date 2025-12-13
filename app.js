@@ -11,6 +11,7 @@ const indexRouter = require("./routes/index"); // Handles routes for serving HTM
 const usersRouter = require("./routes/users"); // Handles routes for user registration (/users)
 const authRouter = require('./routes/auth');   // Handles routes for authentication (/api/auth/login)
 const zonesRouter = require('./routes/zones');   // Handles routes for managing authorized zones.
+const passport = require('./middleware/passport');
 
 // Initialize the Express application
 const app = express();
@@ -30,6 +31,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 // Serve static files (like HTML, CSS, images, and client-side JS) from the 'public' directory.
 app.use(express.static(path.join(__dirname, "public")));
+app.use(passport.initialize());
 
 // --- Route Handling ---
 // Mount the imported route modules to specific URL prefixes.

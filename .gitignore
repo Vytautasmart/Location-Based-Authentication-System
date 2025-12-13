@@ -1,8 +1,12 @@
 # Dependencies
 /node_modules
+node_modules/
 
 # Environment variables
 .env
+
+# Logs
+*.log
 
 .gemini/
 gha-creds-*.json
