@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db/postgre');
 const auth = require('../middleware/auth');
+const { checkRole } = require('../middleware/rbac');
 
 // @route   GET /api/zones
 // @desc    Get all authorized zones
@@ -19,12 +20,7 @@ router.get('/', async (req, res) => {
 // @route   POST /api/zones
 // @desc    Create a new authorized zone
 // @access  Private
-router.post('/', auth, async (req, res) => {
-    // Check if user is admin
-    if (req.user.role !== 'admin') {
-        return res.status(403).json({ msg: 'Access denied. Only admins can create zones.' });
-    }
-
+router.post('/', [auth, checkRole('admin')], async (req, res) => {
     const { name, latitude, longitude, radius } = req.body;
 
     if (!name || !latitude || !longitude || !radius) {
@@ -47,12 +43,7 @@ router.post('/', auth, async (req, res) => {
 // @route   PUT /api/zones/:id
 // @desc    Update an authorized zone
 // @access  Private
-router.put('/:id', auth, async (req, res) => {
-    // Check if user is admin
-    if (req.user.role !== 'admin') {
-        return res.status(403).json({ msg: 'Access denied. Only admins can update zones.' });
-    }
-
+router.put('/:id', [auth, checkRole('admin')], async (req, res) => {
     const { name, latitude, longitude, radius } = req.body;
     const { id } = req.params;
 
@@ -75,12 +66,7 @@ router.put('/:id', auth, async (req, res) => {
 // @route   DELETE /api/zones/:id
 // @desc    Delete an authorized zone
 // @access  Private
-router.delete('/:id', auth, async (req, res) => {
-    // Check if user is admin
-    if (req.user.role !== 'admin') {
-        return res.status(403).json({ msg: 'Access denied. Only admins can delete zones.' });
-    }
-
+router.delete('/:id', [auth, checkRole('admin')], async (req, res) => {
     const { id } = req.params;
 
     try {
