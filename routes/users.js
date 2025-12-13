@@ -3,6 +3,7 @@ const express = require("express"); // Web framework for Node.js
 const router = express.Router(); // Router object to handle routes
 const pool = require("../db/postgre"); // Custom module for PostgreSQL connection pool
 const bcrypt = require("bcryptjs"); // Library for hashing passwords
+const passport = require("passport");
 
 /* 
  * GET users listing. 
@@ -57,9 +58,9 @@ router.post("/", async (req, res, next) => {
   }
 });
 
-const auth = require('../middleware/auth');
 
-router.get('/me', auth, async (req, res) => {
+
+router.get('/me', passport.authenticate('jwt', { session: false }), async (req, res) => {
     try {
         const user = await pool.query('SELECT id, username, role FROM users WHERE id = $1', [req.user.id]);
         res.json(user.rows[0]);
