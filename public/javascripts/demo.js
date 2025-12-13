@@ -65,6 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return response.json();
         })
         .then(data => {
+            console.log('Login successful, data:', data);
             const resultMessage = data.message || 'Login successful!';
             messageDiv.innerHTML = `
                 <p><strong>Result:</strong> ${resultMessage}</p>
@@ -73,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
             messageDiv.style.color = 'green';
         })
         .catch(error => {
-            console.error('Error:', error);
+            console.error('Login failed, error:', error);
             messageDiv.innerHTML = `
                 <p><strong>Error:</strong> ${error.message}</p>
                 <p><strong>Location:</strong> Lat ${selectedLocation.lat}, Lng ${selectedLocation.lng}</p>
