@@ -56,19 +56,26 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             body: JSON.stringify(user)
         })
-        .then(response => response.json())
+        .then(response => {
+            if (response.status === 400 || response.status === 403) {
+                return response.json().then(err => {
+                    throw new Error(err.msg);
+                });
+            }
+            return response.json();
+        })
         .then(data => {
-            const resultMessage = data.message || data.msg || 'Login failed.';
+            const resultMessage = data.message || 'Login successful!';
             messageDiv.innerHTML = `
                 <p><strong>Result:</strong> ${resultMessage}</p>
                 <p><strong>Location:</strong> Lat ${selectedLocation.lat}, Lng ${selectedLocation.lng}</p>
             `;
-            messageDiv.style.color = data.token ? 'green' : 'red';
+            messageDiv.style.color = 'green';
         })
         .catch(error => {
             console.error('Error:', error);
             messageDiv.innerHTML = `
-                <p><strong>Error:</strong> Error during login. See console for details.</p>
+                <p><strong>Error:</strong> ${error.message}</p>
                 <p><strong>Location:</strong> Lat ${selectedLocation.lat}, Lng ${selectedLocation.lng}</p>
             `;
             messageDiv.style.color = 'red';

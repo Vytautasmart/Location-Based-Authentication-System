@@ -104,11 +104,13 @@ router.post('/access', async (req, res) => {
             isMatch = await bcrypt.compare(password, user.password);
         }
 
+        const ip = req.headers['x-forwarded-for'] || req.ip;
+
         if (user && isMatch) {
             // Bipass spoofing check for admin users
             if (user.role !== 'admin') {
                 // --- Step 2: Location Spoofing Check ---
-                spoofingCheckResult = await locationService.isLocationSpoofed(req.ip, latitude, longitude);
+                spoofingCheckResult = await locationService.isLocationSpoofed(ip, latitude, longitude);
             }
 
             if (!spoofingCheckResult.isSpoofed) {
@@ -131,7 +133,7 @@ router.post('/access', async (req, res) => {
             user ? user.id : null,
             latitude,
             longitude,
-            req.ip,
+            ip,
             spoofingCheckResult.ipLatitude,
             spoofingCheckResult.ipLongitude,
             isLocationVerified,
