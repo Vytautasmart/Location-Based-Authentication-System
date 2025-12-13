@@ -106,7 +106,13 @@ router.post('/access', (req, res, next) => {
                 res.json({ ...authorizationResult, token: accessToken });
             } else {
                 if (spoofingCheckResult.isSpoofed) {
-                    return res.status(403).json({ msg: 'Access denied due to potential location spoofing.' });
+                    let msg = 'Access denied due to potential location spoofing.';
+                    if (spoofingCheckResult.reason === 'proxy') {
+                        msg = 'Access from a VPN or proxy is not allowed.';
+                    } else if (spoofingCheckResult.reason === 'distance') {
+                        msg = 'Your reported location is too far from your network location.';
+                    }
+                    return res.status(403).json({ msg });
                 }
                 if (!isLocationVerified) {
                     return res.status(403).json({ msg: 'Access denied. You are not in an authorized location.' });

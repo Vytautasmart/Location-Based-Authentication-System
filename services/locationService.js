@@ -74,6 +74,7 @@ const verifyLocation = async (locationData) => {
 const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
   const result = {
     isSpoofed: false,
+    reason: null,
     ipLatitude: null,
     ipLongitude: null,
     distance: null,
@@ -83,13 +84,23 @@ const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
   }
 
   try {
-    const response = await fetch(`http://ip-api.com/json/${ip}`);
+    // Note: The 'proxy' field requires a paid plan from ip-api.com
+    const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,lat,lon,proxy`);
     const data = await response.json();
 
     if (data.status === "success") {
       result.ipLatitude = data.lat;
       result.ipLongitude = data.lon;
 
+      // Check 1: Is the IP a known proxy/VPN?
+      if (data.proxy) {
+        console.log(`Potential spoofing detected. IP is a known proxy/VPN.`);
+        result.isSpoofed = true;
+        result.reason = 'proxy';
+        return result;
+      }
+
+      // Check 2: Is the client location too far from the IP location?
       const distance = getDistance(
         clientLatitude,
         clientLongitude,
@@ -98,12 +109,12 @@ const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
       );
       result.distance = distance;
 
-      // If distance is greater than 100km, flag as potential spoofing
-      if (distance > 100000) {
+      if (distance > 100000) { // 100km threshold
         console.log(
           `Potential spoofing detected. IP location is more than 100km away from client location.`
         );
         result.isSpoofed = true;
+        result.reason = 'distance';
       }
     }
     return result;
