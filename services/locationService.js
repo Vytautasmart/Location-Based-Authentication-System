@@ -82,6 +82,8 @@ const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
     return result; // Cannot verify without IP
   }
 
+  console.log(`Checking IP geolocation for: ${ip}`);
+
   try {
     // Note: The 'proxy' field requires a paid plan from ip-api.com
     const response = await fetch(
