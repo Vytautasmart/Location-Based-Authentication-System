@@ -1,3 +1,4 @@
+require('dotenv').config();
 // Import necessary packages
 const createError = require("http-errors"); // For creating HTTP error objects
 const express = require("express"); // The main web framework

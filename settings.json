@@ -1,3 +1,0 @@
-{
-    "jwt_secret": "your_super_secret_key_that_should_be_in_an_env_variable"
-}

@@ -4,7 +4,7 @@ const router = express.Router(); // Router object to handle routes
 const bcrypt = require('bcryptjs'); // Library for hashing passwords
 const jwt = require('jsonwebtoken'); // Library for creating JSON Web Tokens
 const pool = require('../db/postgre'); // Custom module for PostgreSQL connection pool
-const settings = require('../settings.json'); // Application settings, including JWT secret
+
 const locationService = require('../services/locationService');
 const authorizationService = require('../services/authorizationService');
 
@@ -57,7 +57,7 @@ router.post('/login', async (req, res) => {
         // Sign the token with the payload, a secret key from settings, and set an expiration time.
         jwt.sign(
             payload,
-            settings.jwt_secret,
+            process.env.JWT_SECRET,
             { expiresIn: 3600 }, // The token will expire in 1 hour (3600 seconds)
             (err, token) => {
                 if (err) throw err;
@@ -148,7 +148,7 @@ router.post('/access', async (req, res) => {
             const payload = { user: { id: user.id, role: user.role } };
             jwt.sign(
                 payload,
-                settings.jwt_secret,
+                process.env.JWT_SECRET,
                 { expiresIn: 3600 },
                 (err, token) => {
                     if (err) throw err;
