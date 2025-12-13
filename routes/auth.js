@@ -50,6 +50,10 @@ router.post('/access', (req, res, next) => {
             return res.status(400).json({ msg: info.message || 'Invalid credentials' });
         }
 
+        console.log('--- New Login Attempt ---');
+        console.log('Request Body:', req.body);
+        console.log('Authenticated User (from Passport):', user);
+
         const startTime = Date.now();
         const { latitude, longitude } = req.body;
 
@@ -63,18 +67,26 @@ router.post('/access', (req, res, next) => {
         
         try {
             const ip = req.headers['x-forwarded-for'] || req.ip;
+            console.log('User IP:', ip);
 
             if (user.role !== 'admin') {
                 spoofingCheckResult = await locationService.isLocationSpoofed(ip, latitude, longitude);
+                console.log('Spoofing Check Result:', spoofingCheckResult);
+            } else {
+                console.log('Skipping spoofing check for admin user.');
             }
 
             if (!spoofingCheckResult.isSpoofed) {
                 isLocationVerified = await locationService.verifyLocation({ latitude, longitude });
+                console.log('Location Verification Result:', isLocationVerified);
+
                 authorizationResult = await authorizationService.grantAccess(user, isLocationVerified);
+                console.log('Authorization Result:', authorizationResult);
             }
 
             const latency = Date.now() - startTime;
             
+            console.log('--- Logging to Database ---');
             const logQuery = `
                 INSERT INTO auth_logs(user_id, client_latitude, client_longitude, ip_address, ip_latitude, ip_longitude, is_location_verified, is_spoofed, access_granted, latency)
                 VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -84,8 +96,10 @@ router.post('/access', (req, res, next) => {
                 spoofingCheckResult.ipLongitude, isLocationVerified, 
                 spoofingCheckResult.isSpoofed, authorizationResult.access === 'granted', latency
             ]);
+            console.log('--- Login Attempt Logged ---');
 
             if (authorizationResult.access === 'granted') {
+                console.log('--- Access Granted: Generating Tokens ---');
                 const payload = { user: { id: user.id, role: user.role } };
                 const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '15m' });
                 const refreshToken = crypto.randomBytes(64).toString('hex');
@@ -103,6 +117,7 @@ router.post('/access', (req, res, next) => {
                     sameSite: 'strict'
                 });
 
+                console.log('--- Sending Response to Client ---');
                 res.json({ ...authorizationResult, token: accessToken });
             } else {
                 if (spoofingCheckResult.isSpoofed) {
