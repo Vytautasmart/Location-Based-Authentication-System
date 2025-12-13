@@ -5,7 +5,6 @@
  */
 
 const pool = require("../db/postgre");
-const fetch = require("node-fetch");
 
 /**
  * Calculates the distance between two points on Earth using the Haversine formula.
@@ -85,7 +84,9 @@ const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
 
   try {
     // Note: The 'proxy' field requires a paid plan from ip-api.com
-    const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,lat,lon,proxy`);
+    const response = await fetch(
+      `http://ip-api.com/json/${ip}?fields=status,lat,lon,proxy`
+    );
     const data = await response.json();
 
     if (data.status === "success") {
@@ -96,7 +97,7 @@ const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
       if (data.proxy) {
         console.log(`Potential spoofing detected. IP is a known proxy/VPN.`);
         result.isSpoofed = true;
-        result.reason = 'proxy';
+        result.reason = "proxy";
         return result;
       }
 
@@ -109,12 +110,13 @@ const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
       );
       result.distance = distance;
 
-      if (distance > 100000) { // 100km threshold
+      if (distance > 100000) {
+        // 100km threshold
         console.log(
           `Potential spoofing detected. IP location is more than 100km away from client location.`
         );
         result.isSpoofed = true;
-        result.reason = 'distance';
+        result.reason = "distance";
       }
     }
     return result;
