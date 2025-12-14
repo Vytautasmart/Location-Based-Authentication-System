@@ -70,61 +70,79 @@ const verifyLocation = async (locationData) => {
   }
 };
 
+const fetch = require("node-fetch");
+
 const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
-  const result = {
-    isSpoofed: false,
-    reason: null,
-    ipLatitude: null,
-    ipLongitude: null,
-    distance: null,
-  };
   if (!ip) {
-    return result; // Cannot verify without IP
+    return { isSpoofed: false }; // Cannot verify without IP
   }
 
-  console.log(`Checking IP geolocation for: ${ip}`);
+  console.log(`Checking IP geolocation for: ${ip} using multiple services.`);
+
+  const services = [
+    `http://ip-api.com/json/${ip}?fields=status,lat,lon,proxy`,
+    `https://ipinfo.io/${ip}/json`,
+    `https://freegeoip.app/json/${ip}`
+  ];
 
   try {
-    // Note: The 'proxy' field requires a paid plan from ip-api.com
-    const response = await fetch(
-      `http://ip-api.com/json/${ip}?fields=status,lat,lon,proxy`
-    );
-    const data = await response.json();
+    const promises = services.map(url => fetch(url).then(res => res.json()));
+    const results = await Promise.allSettled(promises);
+    
+    console.log('Geolocation service results:', results);
 
-    if (data.status === "success") {
-      result.ipLatitude = data.lat;
-      result.ipLongitude = data.lon;
+    let bestMatch = {
+      distance: Infinity,
+      ipLatitude: null,
+      ipLongitude: null,
+    };
 
-      // Check 1: Is the IP a known proxy/VPN?
-      if (data.proxy) {
-        console.log(`Potential spoofing detected. IP is a known proxy/VPN.`);
-        result.isSpoofed = true;
-        result.reason = "proxy";
-        return result;
-      }
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        const data = result.value;
+        let lat, lon, isProxy = false;
 
-      // Check 2: Is the client location too far from the IP location?
-      const distance = getDistance(
-        clientLatitude,
-        clientLongitude,
-        result.ipLatitude,
-        result.ipLongitude
-      );
-      result.distance = distance;
+        // Normalize data from different services
+        if (data.lat && data.lon) { // ip-api.com format
+          lat = data.lat;
+          lon = data.lon;
+          isProxy = data.proxy === true;
+        } else if (data.location) { // ipinfo.io format
+          [lat, lon] = data.location.split(',').map(Number);
+          isProxy = data.bogon || (data.privacy && (data.privacy.vpn || data.privacy.proxy));
+        } else if (data.latitude && data.longitude) { // freegeoip.app format
+          lat = data.latitude;
+          lon = data.longitude;
+        }
 
-      if (distance > 100000) {
-        // 100km threshold
-        console.log(
-          `Potential spoofing detected. IP location is more than 100km away from client location.`
-        );
-        result.isSpoofed = true;
-        result.reason = "distance";
+        if (isProxy) {
+          console.log(`Potential spoofing detected. IP is a known proxy/VPN.`);
+          return { isSpoofed: true, reason: 'proxy' };
+        }
+
+        if (lat && lon) {
+          const distance = getDistance(clientLatitude, clientLongitude, lat, lon);
+          if (distance < bestMatch.distance) {
+            bestMatch = { distance, ipLatitude: lat, ipLongitude: lon };
+          }
+        }
       }
     }
-    return result;
+
+    console.log('Best match location found:', bestMatch);
+
+    if (bestMatch.distance > 100000) { // 100km threshold
+      console.log(
+        `Potential spoofing detected. Best match IP location is more than 100km away.`
+      );
+      return { ...bestMatch, isSpoofed: true, reason: 'distance' };
+    }
+
+    return { ...bestMatch, isSpoofed: false };
+
   } catch (error) {
-    console.error("Error in IP geolocation:", error);
-    return result; // Fail safe
+    console.error("Error in multi-service IP geolocation:", error);
+    return { isSpoofed: false }; // Fail safe
   }
 };
 
