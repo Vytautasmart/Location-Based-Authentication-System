@@ -29,16 +29,22 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 // Parse cookies attached to the client request.
 app.use(cookieParser());
-// Serve static files (like HTML, CSS, images, and client-side JS) from the 'public' directory.
-app.use(express.static(path.join(__dirname, "public")));
+// Serve static files (like HTML, CSS, images, and client-side JS) from the 'frontend/dist' directory.
+app.use(express.static(path.join(__dirname, 'frontend', 'dist')));
+// app.use(express.static(path.join(__dirname, "public"))); // Commented out, replaced by React app
 app.use(passport.initialize());
 
 // --- Route Handling ---
 // Mount the imported route modules to specific URL prefixes.
-app.use("/", indexRouter); // Routes for serving pages
+// app.use("/", indexRouter); // Commented out, replaced by React app
 app.use('/api/users', usersRouter); // Routes for user registration
 app.use('/api/auth', authRouter); // Routes for authentication API
 app.use('/api/zones', zonesRouter); // Routes for managing authorized zones
+
+// Catch-all route to serve the React app's index.html for client-side routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'frontend', 'dist', 'index.html'));
+});
 
 
 // --- Error Handling ---
