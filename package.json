@@ -7,7 +7,8 @@
     "devstart": "nodemon ./bin/www",
     "serverstart": "SET DEBUG=Location-Based-Authentication-System:* & npm start",
     "test": "jest --runInBand",
-    "generate-cert": "node generate-cert.js"
+    "generate-cert": "node generate-cert.js",
+    "start-ssl": "set DEBUG=Location-Based-Authentication-System:* & set PORT=3443 && node ./bin/www"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
