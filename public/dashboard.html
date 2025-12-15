@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <link rel="stylesheet" href="/stylesheets/style.css">
 </head>
 <body>
@@ -14,29 +15,28 @@
 
     <div id="admin-section" style="display: none;">
         <h2>Zone Management</h2>
-        <form id="zone-form">
-            <input type="hidden" id="zone-id">
-            <input type="text" id="zone-name" placeholder="Zone Name" required>
-            <input type="number" id="zone-lat" placeholder="Latitude" required step="any">
-            <input type="number" id="zone-lng" placeholder="Longitude" required step="any">
-            <input type="number" id="zone-radius" placeholder="Radius (meters)" required>
-            <button type="submit">Save Zone</button>
-        </form>
-        <table id="zones-table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Latitude</th>
-                    <th>Longitude</th>
-                    <th>Radius</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-            </tbody>
-        </table>
+        <div id="map" style="height: 400px; width: 100%;"></div>
+        <button id="create-zone-btn" style="margin-top: 10px;">Create Zone from Selected Location</button>
     </div>
 
+    <!-- Modal for creating a new zone -->
+    <div id="zone-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Create New Zone</h2>
+            <form id="zone-form">
+                <label for="zone-name">Zone Name:</label>
+                <input type="text" id="zone-name" required>
+                <label for="zone-radius">Radius (in meters):</label>
+                <input type="number" id="zone-radius" required>
+                <input type="hidden" id="zone-lat">
+                <input type="hidden" id="zone-lng">
+                <button type="submit">Save Zone</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script src="/javascripts/dashboard.js"></script>
     <script src="/javascripts/utils.js"></script>
 </body>
