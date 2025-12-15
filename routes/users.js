@@ -74,7 +74,7 @@ router.get('/me', passport.authenticate('jwt', { session: false }), async (req, 
  * This is another placeholder route and is not part of the main application functionality.
  * Note: The path "./cool" is likely a typo and should be "/cool".
  */
-router.get("./cool", (req, res, next) => {
+router.get("/cool", (req, res, next) => {
   res.send("Youre so cool");
 });
 
