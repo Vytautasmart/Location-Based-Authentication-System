@@ -6,20 +6,25 @@
 
 const app = require("../app");
 const debug = require("debug")("location-based-authentication-system:server");
-const http = require("http");
+const https = require("https");
+const fs = require("fs");
+const path = require("path");
 
 /**
  * Get port from environment and store in Express.
  */
 
-const port = normalizePort(process.env.PORT || "3000");
+const port = normalizePort(process.env.PORT || "3443");
 app.set("port", port);
 
 /**
- * Create HTTP server.
+ * Create HTTPS server.
  */
+const privateKey = fs.readFileSync(path.join(__dirname, '../ssl/key.pem'), 'utf8');
+const certificate = fs.readFileSync(path.join(__dirname, '../ssl/cert.pem'), 'utf8');
+const credentials = { key: privateKey, cert: certificate };
 
-const server = http.createServer(app);
+const server = https.createServer(credentials, app);
 /**
  * Listen on provided port, on all network interfaces.
  */
