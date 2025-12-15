@@ -42,7 +42,7 @@ app.use('/api/auth', authRouter); // Routes for authentication API
 app.use('/api/zones', zonesRouter); // Routes for managing authorized zones
 
 // Catch-all route to serve the React app's index.html for client-side routing
-app.get('*', (req, res) => {
+app.get('/*', (req, res) => {
   res.sendFile(path.join(__dirname, 'frontend', 'dist', 'index.html'));
 });
 
