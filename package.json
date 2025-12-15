@@ -18,13 +18,11 @@
     "http-errors": "~2.0.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
-    "node-fetch": "^3.3.2",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
     "pg": "^8.16.3",
-    "selfsigned": "^5.2.0",
-    "whatwg-url": "^15.1.0"
+    "selfsigned": "^5.2.0"
   },
   "devDependencies": {
     "jest": "^30.2.0",
