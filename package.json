@@ -21,6 +21,7 @@
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
     "pg": "^8.16.3",
+    "selfsigned": "^5.2.0",
     "whatwg-url": "^15.1.0"
   },
   "devDependencies": {
