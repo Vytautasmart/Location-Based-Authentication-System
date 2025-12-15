@@ -110,9 +110,9 @@ const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
           lat = data.lat;
           lon = data.lon;
           isProxy = data.proxy === true;
-        } else if (data.location) {
+        } else if (data.loc) {
           // ipinfo.io format
-          [lat, lon] = data.location.split(",").map(Number);
+          [lat, lon] = data.loc.split(",").map(Number);
           isProxy =
             data.bogon ||
             (data.privacy && (data.privacy.vpn || data.privacy.proxy));

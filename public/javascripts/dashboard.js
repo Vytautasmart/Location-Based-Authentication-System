@@ -158,41 +158,35 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Event delegation for edit/delete buttons in popups
-    map.on('popupopen', (e) => {
-        const popupNode = e.popup.getElement();
-        
-        const deleteBtn = popupNode.querySelector('.delete-btn');
-        if (deleteBtn) {
-            deleteBtn.onclick = (e) => {
-                const zoneId = e.target.dataset.id;
-                if (confirm('Are you sure you want to delete this zone?')) {
-                    fetch(`/api/zones/${zoneId}`, {
-                        method: 'DELETE',
-                        headers: { 'x-auth-token': token }
-                    })
-                    .then(response => {
-                        if (response.ok) {
-                            loadZones();
-                            map.closePopup();
-                        } else {
-                            alert('Failed to delete zone.');
-                        }
-                    });
-                }
-            };
+    document.getElementById('map').addEventListener('click', (e) => {
+        const target = e.target;
+
+        if (target.classList.contains('delete-btn')) {
+            const zoneId = target.dataset.id;
+            if (confirm('Are you sure you want to delete this zone?')) {
+                fetch(`/api/zones/${zoneId}`, {
+                    method: 'DELETE',
+                    headers: { 'x-auth-token': token }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        loadZones();
+                        map.closePopup();
+                    } else {
+                        alert('Failed to delete zone.');
+                    }
+                });
+            }
         }
 
-        const editBtn = popupNode.querySelector('.edit-btn');
-        if (editBtn) {
-            editBtn.onclick = (e) => {
-                const { id, name, radius, lat, lng } = e.target.dataset;
-                zoneIdToUpdate = id;
-                zoneNameInput.value = name;
-                zoneRadiusInput.value = radius;
-                zoneLatInput.value = lat;
-                zoneLngInput.value = lng;
-                modal.style.display = 'block';
-            };
+        if (target.classList.contains('edit-btn')) {
+            const { id, name, radius, lat, lng } = target.dataset;
+            zoneIdToUpdate = id;
+            zoneNameInput.value = name;
+            zoneRadiusInput.value = radius;
+            zoneLatInput.value = lat;
+            zoneLngInput.value = lng;
+            modal.style.display = 'block';
         }
     });
 });
