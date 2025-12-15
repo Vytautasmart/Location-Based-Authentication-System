@@ -1,13 +1,15 @@
 import React from 'react';
+import { Outlet } from 'react-router-dom';
 import Navbar from './components/Navbar';
-import LoginPage from './pages/LoginPage';
 import './App.css';
 
 function App() {
   return (
     <div>
       <Navbar />
-      <LoginPage />
+      <main>
+        <Outlet />
+      </main>
     </div>
   );
 }
