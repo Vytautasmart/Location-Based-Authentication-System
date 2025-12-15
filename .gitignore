@@ -10,3 +10,6 @@ node_modules/
 
 .gemini/
 gha-creds-*.json
+
+# SSL certificate files
+/ssl/
