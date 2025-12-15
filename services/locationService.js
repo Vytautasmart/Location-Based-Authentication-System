@@ -70,8 +70,6 @@ const verifyLocation = async (locationData) => {
   }
 };
 
-const fetch = require("node-fetch");
-
 const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
   if (!ip) {
     return { isSpoofed: false }; // Cannot verify without IP
@@ -82,14 +80,16 @@ const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
   const services = [
     `http://ip-api.com/json/${ip}?fields=status,lat,lon,proxy`,
     `https://ipinfo.io/${ip}/json`,
-    `https://freegeoip.app/json/${ip}`
+    `https://freegeoip.app/json/${ip}`,
   ];
 
   try {
-    const promises = services.map(url => fetch(url).then(res => res.json()));
+    const promises = services.map((url) =>
+      fetch(url).then((res) => res.json())
+    );
     const results = await Promise.allSettled(promises);
-    
-    console.log('Geolocation service results:', results);
+
+    console.log("Geolocation service results:", results);
 
     let bestMatch = {
       distance: Infinity,
@@ -98,30 +98,42 @@ const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
     };
 
     for (const result of results) {
-      if (result.status === 'fulfilled') {
+      if (result.status === "fulfilled") {
         const data = result.value;
-        let lat, lon, isProxy = false;
+        let lat,
+          lon,
+          isProxy = false;
 
         // Normalize data from different services
-        if (data.lat && data.lon) { // ip-api.com format
+        if (data.lat && data.lon) {
+          // ip-api.com format
           lat = data.lat;
           lon = data.lon;
           isProxy = data.proxy === true;
-        } else if (data.location) { // ipinfo.io format
-          [lat, lon] = data.location.split(',').map(Number);
-          isProxy = data.bogon || (data.privacy && (data.privacy.vpn || data.privacy.proxy));
-        } else if (data.latitude && data.longitude) { // freegeoip.app format
+        } else if (data.location) {
+          // ipinfo.io format
+          [lat, lon] = data.location.split(",").map(Number);
+          isProxy =
+            data.bogon ||
+            (data.privacy && (data.privacy.vpn || data.privacy.proxy));
+        } else if (data.latitude && data.longitude) {
+          // freegeoip.app format
           lat = data.latitude;
           lon = data.longitude;
         }
 
         if (isProxy) {
           console.log(`Potential spoofing detected. IP is a known proxy/VPN.`);
-          return { isSpoofed: true, reason: 'proxy' };
+          return { isSpoofed: true, reason: "proxy" };
         }
 
         if (lat && lon) {
-          const distance = getDistance(clientLatitude, clientLongitude, lat, lon);
+          const distance = getDistance(
+            clientLatitude,
+            clientLongitude,
+            lat,
+            lon
+          );
           if (distance < bestMatch.distance) {
             bestMatch = { distance, ipLatitude: lat, ipLongitude: lon };
           }
@@ -129,17 +141,17 @@ const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
       }
     }
 
-    console.log('Best match location found:', bestMatch);
+    console.log("Best match location found:", bestMatch);
 
-    if (bestMatch.distance > 100000) { // 100km threshold
+    if (bestMatch.distance > 100000) {
+      // 100km threshold
       console.log(
         `Potential spoofing detected. Best match IP location is more than 100km away.`
       );
-      return { ...bestMatch, isSpoofed: true, reason: 'distance' };
+      return { ...bestMatch, isSpoofed: true, reason: "distance" };
     }
 
     return { ...bestMatch, isSpoofed: false };
-
   } catch (error) {
     console.error("Error in multi-service IP geolocation:", error);
     return { isSpoofed: false }; // Fail safe
