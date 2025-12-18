@@ -34,7 +34,7 @@ router.post("/", async (req, res, next) => {
     // We store the `hashedPassword`, never the original plain-text password.
     // "RETURNING *" tells the database to return the newly created user row, including the ID.
     const result = await pool.query(
-      "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING *",
+      "INSERT INTO users (username, password, role) VALUES ($1, $2, 'user') RETURNING *",
       [username, hashedPassword]
     );
     
