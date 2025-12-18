@@ -6,28 +6,39 @@ function LoginPage() {
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
-      });
-
-      if (response.ok) {
-        const { token } = await response.json();
-        localStorage.setItem('token', token);
-        navigate('/dashboard');
-      } else {
-        alert('Login failed');
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      alert('An error occurred during login.');
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser');
+      return;
     }
+
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const { latitude, longitude } = position.coords;
+      try {
+        const response = await fetch('/api/auth/access', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username, password, latitude, longitude }),
+        });
+
+        if (response.ok) {
+          const { token } = await response.json();
+          localStorage.setItem('token', token);
+          navigate('/dashboard');
+        } else {
+          const errorData = await response.json();
+          alert(`Login failed: ${errorData.msg}`);
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        alert('An error occurred during login.');
+      }
+    }, () => {
+      alert('Unable to retrieve your location');
+    });
   };
 
   return (
