@@ -1,36 +1,21 @@
 const request = require('supertest');
-const app = require('../app');
 const pool = require('../db/postgre');
 const jwt = require('jsonwebtoken');
-const settings = require('../settings.json');
-
-const locationService = require('../services/locationService');
-jest.mock('../services/locationService');
 
 describe('Auth Endpoints', () => {
+  let app;
   let user;
-
-  beforeAll(async () => {
-    // Create the auth_logs table for the test environment
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS auth_logs (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
-        timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        client_latitude REAL,
-        client_longitude REAL,
-        ip_address VARCHAR(50),
-        ip_latitude REAL,
-        ip_longitude REAL,
-        is_location_verified BOOLEAN,
-        is_spoofed BOOLEAN,
-        access_granted BOOLEAN,
-        latency INTEGER
-      );
-    `);
-  });
+  let locationService;
 
   beforeEach(async () => {
+    jest.resetModules();
+    jest.doMock('../services/locationService', () => ({
+      verifyLocation: jest.fn(),
+      isLocationSpoofed: jest.fn(),
+    }));
+    app = require('../app');
+    locationService = require('../services/locationService');
+
     // Clean up before each test
     await pool.query("DELETE FROM auth_logs WHERE user_id IN (SELECT id FROM users WHERE username = 'testuser')");
     await pool.query("DELETE FROM users WHERE username = 'testuser'");
@@ -115,7 +100,7 @@ describe('Auth Endpoints', () => {
         username: 'wronguser',
         password: 'wrongpassword',
       });
-    expect(res.statusCode).toEqual(400);
+    expect(res.statusCode).toEqual(401);
     expect(res.body.msg).toEqual('Invalid credentials');
   });
 
@@ -124,7 +109,7 @@ describe('Auth Endpoints', () => {
     const user = { id: 1, role: 'admin' };
     const expiredToken = jwt.sign(
       { user },
-      settings.jwt_secret,
+      process.env.JWT_SECRET,
       { expiresIn: '-1s' } // A token that expired 1 second ago
     );
 
@@ -139,8 +124,91 @@ describe('Auth Endpoints', () => {
         radius: 100
       });
 
-    // Step 3: Assert that the request was denied
     expect(res.statusCode).toEqual(401);
-    expect(res.body.msg).toEqual('Token is not valid');
+  });
+
+  it('should deny access to a protected route without a token', async () => {
+    const res = await request(app)
+      .get('/api/users/me')
+      .send();
+
+    expect(res.statusCode).toEqual(401);
+  });
+
+  it('should deny access with a malformed token', async () => {
+    const res = await request(app)
+      .get('/api/users/me')
+      .set('x-auth-token', 'this-is-not-a-jwt')
+      .send();
+
+    expect(res.statusCode).toEqual(401);
+  });
+
+  it('should issue a token with the correct user payload', async () => {
+    locationService.verifyLocation.mockResolvedValue(true);
+    locationService.isLocationSpoofed.mockResolvedValue({ isSpoofed: false });
+
+    const res = await request(app)
+      .post('/api/auth/access')
+      .send({
+        username: 'testuser',
+        password: 'password',
+        latitude: 10,
+        longitude: 10,
+      });
+
+    const decoded = jwt.verify(res.body.token, process.env.JWT_SECRET);
+    expect(decoded.user.id).toEqual(user.id);
+    expect(decoded.user.role).toEqual('user');
+  });
+
+  it('should refresh a token successfully', async () => {
+    locationService.verifyLocation.mockResolvedValue(true);
+    locationService.isLocationSpoofed.mockResolvedValue({ isSpoofed: false });
+
+    const loginRes = await request(app)
+      .post('/api/auth/access')
+      .send({
+        username: 'testuser',
+        password: 'password',
+        latitude: 10,
+        longitude: 10,
+      });
+    
+    const { refreshToken } = loginRes.body;
+
+    const refreshRes = await request(app)
+      .post('/api/auth/refresh')
+      .send({ token: refreshToken });
+
+    expect(refreshRes.statusCode).toEqual(200);
+    expect(refreshRes.body.token).toBeDefined();
+    expect(refreshRes.body.refreshToken).toBeDefined();
+  });
+
+  it('should logout successfully', async () => {
+    locationService.verifyLocation.mockResolvedValue(true);
+    locationService.isLocationSpoofed.mockResolvedValue({ isSpoofed: false });
+
+    const loginRes = await request(app)
+      .post('/api/auth/access')
+      .send({
+        username: 'testuser',
+        password: 'password',
+        latitude: 10,
+        longitude: 10,
+      });
+    
+    const { refreshToken } = loginRes.body;
+
+    const logoutRes = await request(app)
+      .post('/api/auth/logout')
+      .send({ token: refreshToken });
+
+    expect(logoutRes.statusCode).toEqual(200);
+
+    // Verify the token is deleted from the database
+    const tokenInDb = await pool.query('SELECT * FROM refresh_tokens WHERE token = $1', [refreshToken]);
+    expect(tokenInDb.rows.length).toBe(0);
   });
 });

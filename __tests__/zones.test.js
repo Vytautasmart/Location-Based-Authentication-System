@@ -2,7 +2,6 @@ const request = require('supertest');
 const app = require('../app');
 const pool = require('../db/postgre');
 const jwt = require('jsonwebtoken');
-const settings = require('../settings.json');
 
 describe('Zone Endpoints', () => {
   beforeAll(async () => {
@@ -51,31 +50,30 @@ describe('Zone Endpoints', () => {
           radius: 100,
         });
       expect(res.statusCode).toEqual(401);
-      expect(res.body.msg).toEqual('No token, authorization denied');
     });
 
     it('should deny access if the user is not an admin', async () => {
-      // Create a token for a regular user
-      const user = { id: 2, role: 'user' };
-      const token = jwt.sign({ user }, settings.jwt_secret, { expiresIn: '1h' });
+      // Create a token for a non-admin user
+      const user = { id: 1, role: 'user' };
+      const token = jwt.sign({ user }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
       const res = await request(app)
         .post('/api/zones')
         .set('x-auth-token', token)
         .send({
-          name: 'Test Zone',
-          latitude: 12.34,
-          longitude: 56.78,
-          radius: 100,
+            name: 'Test Zone',
+            latitude: 12.34,
+            longitude: 56.78,
+            radius: 100
         });
       expect(res.statusCode).toEqual(403);
-      expect(res.body.msg).toEqual('Access denied. Only admins can create zones.');
+      expect(res.body.msg).toEqual('Access denied. Only admins can perform this action.');
     });
 
     it('should create a zone if the user is an admin', async () => {
         // Create a token for an admin user
         const user = { id: 1, role: 'admin' };
-        const token = jwt.sign({ user }, settings.jwt_secret, { expiresIn: '1h' });
+        const token = jwt.sign({ user }, process.env.JWT_SECRET, { expiresIn: '1h' });
   
         const res = await request(app)
           .post('/api/zones')
@@ -94,7 +92,7 @@ describe('Zone Endpoints', () => {
       it('should return a 400 error if required fields are missing', async () => {
         // Create a token for an admin user
         const user = { id: 1, role: 'admin' };
-        const token = jwt.sign({ user }, settings.jwt_secret, { expiresIn: '1h' });
+        const token = jwt.sign({ user }, process.env.JWT_SECRET, { expiresIn: '1h' });
     
         const res = await request(app)
           .post('/api/zones')

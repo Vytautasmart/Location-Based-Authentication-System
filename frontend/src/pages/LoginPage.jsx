@@ -26,8 +26,14 @@ function LoginPage() {
         });
 
         if (response.ok) {
-          const { token } = await response.json();
-          localStorage.setItem('token', token);
+          const data = await response.json();
+          localStorage.setItem('token', data.token);
+          if (data.zoneName) {
+            localStorage.setItem('zoneName', data.zoneName);
+          }
+          if (data.authLogs) {
+            localStorage.setItem('authLogs', JSON.stringify(data.authLogs));
+          }
           navigate('/dashboard');
         } else {
           const errorData = await response.json();

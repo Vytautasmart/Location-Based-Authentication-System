@@ -41,7 +41,7 @@ const verifyLocation = async (locationData) => {
 
   if (!locationData || !locationData.latitude || !locationData.longitude) {
     console.log("Location is invalid.");
-    return false;
+    return { isVerified: false, zoneName: null };
   }
 
   try {
@@ -58,15 +58,15 @@ const verifyLocation = async (locationData) => {
       );
       if (distance <= zone.radius) {
         console.log(`User is within zone: ${zone.name}`);
-        return true;
+        return { isVerified: true, zoneName: zone.name };
       }
     }
 
     console.log("User is not in any authorized zone.");
-    return false;
+    return { isVerified: false, zoneName: null };
   } catch (err) {
     console.error("Error verifying location:", err.message);
-    return false;
+    return { isVerified: false, zoneName: null };
   }
 };
 

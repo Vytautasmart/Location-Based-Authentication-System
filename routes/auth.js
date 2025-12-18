@@ -77,11 +77,16 @@ router.post('/access', (req, res, next) => {
             }
 
             if (!spoofingCheckResult.isSpoofed) {
-                isLocationVerified = await locationService.verifyLocation({ latitude, longitude });
-                console.log('Location Verification Result:', isLocationVerified);
+                const { isVerified, zoneName } = await locationService.verifyLocation({ latitude, longitude });
+                isLocationVerified = isVerified;
+                console.log('Location Verification Result:', { isVerified, zoneName });
 
                 authorizationResult = await authorizationService.grantAccess(user, isLocationVerified);
                 console.log('Authorization Result:', authorizationResult);
+
+                if (authorizationResult.access === 'granted') {
+                    authorizationResult.zoneName = zoneName;
+                }
             }
 
             const latency = Date.now() - startTime;
@@ -99,7 +104,7 @@ router.post('/access', (req, res, next) => {
             console.log('--- Login Attempt Logged ---');
 
             if (authorizationResult.access === 'granted') {
-                console.log('--- Access Granted: Generating Tokens ---');
+                console.log('--- Access Granted: Generating Tokens and Fetching Logs ---');
                 const payload = { user: { id: user.id, role: user.role } };
                 const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '15m' });
                 const refreshToken = crypto.randomBytes(64).toString('hex');
@@ -117,8 +122,19 @@ router.post('/access', (req, res, next) => {
                     sameSite: 'strict'
                 });
 
+                // Fetch all auth logs for the user
+                const authLogsRes = await pool.query('SELECT * FROM auth_logs WHERE user_id = $1 ORDER BY timestamp DESC', [user.id]);
+
+                console.log('--- Debugging Response ---');
+                console.log('Authorization Result:', authorizationResult);
+                console.log('Auth Logs:', authLogsRes.rows);
+
                 console.log('--- Sending Response to Client ---');
-                res.json({ ...authorizationResult, token: accessToken });
+                res.json({ 
+                    ...authorizationResult, 
+                    token: accessToken,
+                    authLogs: authLogsRes.rows
+                });
             } else {
                 if (spoofingCheckResult.isSpoofed) {
                     let msg = 'Access denied due to potential location spoofing.';

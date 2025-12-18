@@ -37,6 +37,9 @@ function DashboardPage() {
   const [selectedPosition, setSelectedPosition] = useState(null);
   const [editingZone, setEditingZone] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [zoneName, setZoneName] = useState('');
+  const [authLogs, setAuthLogs] = useState([]);
+  const [lastLog, setLastLog] = useState(null);
   const navigate = useNavigate();
 
   const loadZones = () => {
@@ -58,6 +61,20 @@ function DashboardPage() {
       return;
     }
 
+    const storedZoneName = localStorage.getItem('zoneName');
+    if (storedZoneName) {
+      setZoneName(storedZoneName);
+    }
+
+    const storedAuthLogs = localStorage.getItem('authLogs');
+    if (storedAuthLogs) {
+      const parsedLogs = JSON.parse(storedAuthLogs);
+      setAuthLogs(parsedLogs);
+      if (parsedLogs.length > 0) {
+        setLastLog(parsedLogs[0]);
+      }
+    }
+
     fetch('/api/users/me', {
       headers: { 'x-auth-token': token },
     })
@@ -73,12 +90,16 @@ function DashboardPage() {
       })
       .catch(() => {
         localStorage.removeItem('token');
+        localStorage.removeItem('zoneName');
+        localStorage.removeItem('authLogs');
         navigate('/login');
       });
   }, [navigate]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('zoneName');
+    localStorage.removeItem('authLogs');
     navigate('/login');
   };
 
@@ -166,7 +187,15 @@ function DashboardPage() {
       <div>
         <p>Username: {user.username}</p>
         <p>Role: {user.role}</p>
+        {zoneName && <p>Logged in from zone: {zoneName}</p>}
       </div>
+      {lastLog && (
+        <div>
+          <h3>Last Login Attempt</h3>
+          <p>Timestamp: {new Date(lastLog.timestamp).toLocaleString()}</p>
+          <p>Access Granted: {lastLog.access_granted ? 'Yes' : 'No'}</p>
+        </div>
+      )}
       <button onClick={handleLogout}>Logout</button>
 
       {user.role === 'admin' && (
@@ -176,6 +205,42 @@ function DashboardPage() {
           <button onClick={handleCreateZone}>Create Zone from Selected Location</button>
         </div>
       )}
+
+      <h2>Authentication Logs</h2>
+      <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Access Granted</th>
+            <th>Spoofed</th>
+            <th>Verified Location</th>
+            <th>IP Address</th>
+            <th>Client Latitude</th>
+            <th>Client Longitude</th>
+            <th>IP Latitude</th>
+            <th>IP Longitude</th>
+            <th>Latency</th>
+          </tr>
+        </thead>
+        <tbody>
+          {authLogs.map(log => (
+            <tr key={log.id}>
+              <td>{new Date(log.timestamp).toLocaleString()}</td>
+              <td>{log.access_granted ? 'Yes' : 'No'}</td>
+              <td>{log.is_spoofed ? 'Yes' : 'No'}</td>
+              <td>{log.is_location_verified ? 'Yes' : 'No'}</td>
+              <td>{log.ip_address}</td>
+              <td>{log.client_latitude}</td>
+              <td>{log.client_longitude}</td>
+              <td>{log.ip_latitude}</td>
+              <td>{log.ip_longitude}</td>
+              <td>{log.latency}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      </div>
 
       {isModalOpen && (
         <ZoneModal
