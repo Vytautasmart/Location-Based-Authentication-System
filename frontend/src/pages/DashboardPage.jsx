@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Map from '../components/Map';
+import './Page.css';
 
 function ZoneModal({ zone, onSave, onCancel }) {
   const [name, setName] = useState(zone ? zone.name : '');
@@ -156,11 +157,11 @@ function DashboardPage() {
   };
 
   if (!user) {
-    return <div>Loading...</div>;
+    return <div className="page-container">Loading...</div>;
   }
 
   return (
-    <div onClick={handleMapClick}>
+    <div className="page-container" onClick={handleMapClick}>
       <h1>Welcome to your Dashboard</h1>
       <div>
         <p>Username: {user.username}</p>

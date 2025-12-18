@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import './Page.css';
 
 function RegisterPage() {
   const [username, setUsername] = useState('');
@@ -22,7 +23,7 @@ function RegisterPage() {
         setSuccessMessage('Registration successful! You will be redirected to the login page shortly.');
         setUsername('');
         setPassword('');
-        setTimeout(() => navigate('/login'), 2000);  
+        setTimeout(() => navigate('/login'), 2000); 
       } else {
         const errorData = await response.json();
         alert(`Registration failed: ${errorData.message || 'Unknown error'}`);
@@ -36,10 +37,10 @@ function RegisterPage() {
   };
 
   return (
-    <div>
+    <div className="page-container">
       <h1>Register</h1>
       {successMessage && <p style={{ color: 'green' }}>{successMessage}</p>}
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="form-container">
         <div>
           <label htmlFor="username">Username:</label>
           <input

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import './Page.css';
 
 function LoginPage() {
   const [username, setUsername] = useState('');
@@ -42,9 +43,9 @@ function LoginPage() {
   };
 
   return (
-    <div>
+    <div className="page-container">
       <h1>Login</h1>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="form-container">
         <div>
           <label htmlFor="username">Username:</label>
           <input
