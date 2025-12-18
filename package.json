@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "start": "npm run build-frontend && node ./bin/www",
-    "devstart": "nodemon ./bin/www",
+    "devstart": "npm run build-frontend && nodemon ./bin/www",
     "serverstart": "SET DEBUG=Location-Based-Authentication-System:* & npm start",
     "test": "jest --runInBand",
     "build-frontend": "cd frontend && npm run build"

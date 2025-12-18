@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 function RegisterPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -18,19 +19,26 @@ function RegisterPage() {
       });
 
       if (response.ok) {
-        navigate('/login');
+        setSuccessMessage('Registration successful! You will be redirected to the login page shortly.');
+        setUsername('');
+        setPassword('');
+        setTimeout(() => navigate('/login'), 2000);  
       } else {
-        alert('Registration failed');
+        const errorData = await response.json();
+        alert(`Registration failed: ${errorData.message || 'Unknown error'}`);
+        setSuccessMessage('');
       }
     } catch (error) {
       console.error('Registration error:', error);
       alert('An error occurred during registration.');
+      setSuccessMessage('');
     }
   };
 
   return (
     <div>
       <h1>Register</h1>
+      {successMessage && <p style={{ color: 'green' }}>{successMessage}</p>}
       <form onSubmit={handleSubmit}>
         <div>
           <label htmlFor="username">Username:</label>
@@ -54,6 +62,9 @@ function RegisterPage() {
         </div>
         <button type="submit">Register</button>
       </form>
+      <p>
+        Already have an account? <a href="/login">Login here</a>.
+      </p>
     </div>
   );
 }

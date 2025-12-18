@@ -1,6 +1,17 @@
 import React from 'react';
 import { MapContainer, TileLayer, Circle, Popup, Marker } from 'react-leaflet';
 import { useMapEvents } from 'react-leaflet/hooks';
+import L from 'leaflet';
+
+// Fix for default icon issue with webpack
+delete L.Icon.Default.prototype._getIconUrl;
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+});
+
 
 function LocationMarker({ selectedPosition, setSelectedPosition }) {
   const map = useMapEvents({
