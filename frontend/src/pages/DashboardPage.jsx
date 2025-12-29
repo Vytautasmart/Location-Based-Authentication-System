@@ -1,12 +1,25 @@
+// Import necessary libraries and components from React and React Router.
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Map from '../components/Map';
 import './Page.css';
 
+/**
+ * A modal component for creating or editing a zone.
+ * It provides a form for entering the zone's name and radius.
+ * 
+ * @param {object} props - The component's props.
+ * @param {object} props.zone - The zone to be edited, or null for a new zone.
+ * @param {Function} props.onSave - A callback function to save the zone.
+ * @param {Function} props.onCancel - A callback function to cancel the operation.
+ * @returns {JSX.Element} The zone modal.
+ */
 function ZoneModal({ zone, onSave, onCancel }) {
+  // State for the zone's name and radius.
   const [name, setName] = useState(zone ? zone.name : '');
   const [radius, setRadius] = useState(zone ? zone.radius : '');
 
+  // Handles the save operation by calling the onSave callback with the updated zone data.
   const handleSave = () => {
     onSave({ ...zone, name, radius: parseFloat(radius) });
   };
@@ -30,8 +43,12 @@ function ZoneModal({ zone, onSave, onCancel }) {
   );
 }
 
-
+/**
+ * The main dashboard page for authenticated users.
+ * It displays user information, authentication logs, and zone management tools for admins.
+ */
 function DashboardPage() {
+  // State variables for user data, zones, map interactions, and UI elements.
   const [user, setUser] = useState(null);
   const [zones, setZones] = useState([]);
   const [selectedPosition, setSelectedPosition] = useState(null);
@@ -42,6 +59,7 @@ function DashboardPage() {
   const [lastLog, setLastLog] = useState(null);
   const navigate = useNavigate();
 
+  // Fetches the list of authorized zones from the server.
   const loadZones = () => {
     const token = localStorage.getItem('token');
     fetch('/api/zones', {
@@ -54,6 +72,7 @@ function DashboardPage() {
       .then((zonesData) => setZones(zonesData));
   };
 
+  // Effect hook to fetch user data and zones on component mount.
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -61,6 +80,7 @@ function DashboardPage() {
       return;
     }
 
+    // Load zone name and auth logs from local storage.
     const storedZoneName = localStorage.getItem('zoneName');
     if (storedZoneName) {
       setZoneName(storedZoneName);
@@ -75,6 +95,7 @@ function DashboardPage() {
       }
     }
 
+    // Fetch the current user's data.
     fetch('/api/users/me', {
       headers: { 'x-auth-token': token },
     })
@@ -84,11 +105,13 @@ function DashboardPage() {
       })
       .then((userData) => {
         setUser(userData);
+        // If the user is an admin, load the zones.
         if (userData.role === 'admin') {
           loadZones();
         }
       })
       .catch(() => {
+        // If fetching fails, clear local storage and redirect to login.
         localStorage.removeItem('token');
         localStorage.removeItem('zoneName');
         localStorage.removeItem('authLogs');
@@ -96,6 +119,7 @@ function DashboardPage() {
       });
   }, [navigate]);
 
+  // Handles the user logout process.
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('zoneName');
@@ -103,6 +127,7 @@ function DashboardPage() {
     navigate('/login');
   };
 
+  // Opens the modal to create a new zone at the selected map location.
   const handleCreateZone = () => {
     if (selectedPosition) {
       setEditingZone({
@@ -115,6 +140,7 @@ function DashboardPage() {
     }
   };
 
+  // Saves a new or existing zone to the server.
   const handleSaveZone = async (zone) => {
     const token = localStorage.getItem('token');
     const url = zone.id ? `/api/zones/${zone.id}` : '/api/zones';
@@ -144,6 +170,7 @@ function DashboardPage() {
     }
   };
 
+  // Deletes a zone after confirmation.
   const handleDeleteZone = async (zoneId) => {
     if (window.confirm('Are you sure you want to delete this zone?')) {
       const token = localStorage.getItem('token');
@@ -165,6 +192,7 @@ function DashboardPage() {
     }
   };
   
+  // Handles clicks on the map, specifically for editing or deleting zones from popups.
   const handleMapClick = (e) => {
     if (e.target.classList.contains('edit-btn')) {
       const zoneId = e.target.dataset.id;
@@ -177,10 +205,12 @@ function DashboardPage() {
     }
   };
 
+  // Show a loading message while user data is being fetched.
   if (!user) {
     return <div className="page-container">Loading...</div>;
   }
 
+  // Render the main dashboard content.
   return (
     <div className="page-container" onClick={handleMapClick}>
       <h1>Welcome to your Dashboard</h1>
@@ -198,6 +228,7 @@ function DashboardPage() {
       )}
       <button onClick={handleLogout}>Logout</button>
 
+      {/* Only show the Zone Management section to admin users. */}
       {user.role === 'admin' && (
         <div>
           <h2>Zone Management</h2>
@@ -224,6 +255,7 @@ function DashboardPage() {
           </tr>
         </thead>
         <tbody>
+          {/* Map over the authentication logs to display them in a table. */}
           {authLogs.map(log => (
             <tr key={log.id}>
               <td>{new Date(log.timestamp).toLocaleString()}</td>
@@ -242,6 +274,7 @@ function DashboardPage() {
       </table>
       </div>
 
+      {/* Show the ZoneModal if it is open. */}
       {isModalOpen && (
         <ZoneModal
           zone={editingZone}

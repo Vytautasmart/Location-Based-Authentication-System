@@ -1,22 +1,39 @@
+// Import necessary libraries and hooks from React and React Router.
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Page.css';
 
+/**
+ * The login page component.
+ * It provides a form for users to log in with their username and password,
+ * and it uses the browser's Geolocation API to include their location in the login attempt.
+ */
 function LoginPage() {
+  // State variables for the username and password fields.
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
 
+  /**
+   * Handles the form submission for the login attempt.
+   * It prevents the default form submission, gets the user's current location,
+   * and sends a POST request to the server with the login credentials and location.
+   * 
+   * @param {Event} e - The form submission event.
+   */
   const handleSubmit = (e) => {
     e.preventDefault();
+    // Check if the browser supports geolocation.
     if (!navigator.geolocation) {
       alert('Geolocation is not supported by your browser');
       return;
     }
 
+    // Get the user's current position.
     navigator.geolocation.getCurrentPosition(async (position) => {
       const { latitude, longitude } = position.coords;
       try {
+        // Send a POST request to the access endpoint with the user's credentials and location.
         const response = await fetch('/api/auth/access', {
           method: 'POST',
           headers: {
@@ -25,6 +42,7 @@ function LoginPage() {
           body: JSON.stringify({ username, password, latitude, longitude }),
         });
 
+        // If the login is successful, store the token and other data in local storage and navigate to the dashboard.
         if (response.ok) {
           const data = await response.json();
           localStorage.setItem('token', data.token);
@@ -36,6 +54,7 @@ function LoginPage() {
           }
           navigate('/dashboard');
         } else {
+          // If the login fails, show an alert with the error message.
           const errorData = await response.json();
           alert(`Login failed: ${errorData.msg}`);
         }
@@ -44,10 +63,12 @@ function LoginPage() {
         alert('An error occurred during login.');
       }
     }, () => {
+      // Handle errors in retrieving the user's location.
       alert('Unable to retrieve your location');
     });
   };
 
+  // Render the login form.
   return (
     <div className="page-container">
       <h1>Login</h1>
