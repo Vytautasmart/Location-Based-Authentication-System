@@ -55,7 +55,7 @@ describe('Zone Endpoints', () => {
     it('should deny access if the user is not an admin', async () => {
       // Create a token for a non-admin user
       const user = { id: 1, role: 'user' };
-      const token = jwt.sign({ user }, process.env.JWT_SECRET, { expiresIn: '1h' });
+      const token = jwt.sign({ user }, process.env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '1h' });
 
       const res = await request(app)
         .post('/api/zones')
@@ -73,8 +73,8 @@ describe('Zone Endpoints', () => {
     it('should create a zone if the user is an admin', async () => {
         // Create a token for an admin user
         const user = { id: 1, role: 'admin' };
-        const token = jwt.sign({ user }, process.env.JWT_SECRET, { expiresIn: '1h' });
-  
+        const token = jwt.sign({ user }, process.env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '1h' });
+
         const res = await request(app)
           .post('/api/zones')
           .set('x-auth-token', token)
@@ -92,8 +92,8 @@ describe('Zone Endpoints', () => {
       it('should return a 400 error if required fields are missing', async () => {
         // Create a token for an admin user
         const user = { id: 1, role: 'admin' };
-        const token = jwt.sign({ user }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    
+        const token = jwt.sign({ user }, process.env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '1h' });
+
         const res = await request(app)
           .post('/api/zones')
           .set('x-auth-token', token)
@@ -102,7 +102,7 @@ describe('Zone Endpoints', () => {
             // Missing latitude, longitude, and radius
           });
         expect(res.statusCode).toEqual(400);
-        expect(res.body.msg).toEqual('Please provide name, latitude, longitude, and radius');
+        expect(res.body.msg).toEqual('Validation failed');
       });
   });
 });

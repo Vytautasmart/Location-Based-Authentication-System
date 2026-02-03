@@ -5,9 +5,11 @@ const express = require("express"); // The main web framework
 const path = require("path"); // For handling file paths
 const cookieParser = require("cookie-parser"); // For parsing cookies from the request
 const logger = require("morgan"); // For logging HTTP request details
+const helmet = require("helmet"); // Security headers
+const cors = require("cors"); // CORS configuration
+const rateLimit = require("express-rate-limit"); // Rate limiting
 
 // Import route modules
-const indexRouter = require("./routes/index"); // Handles routes for serving HTML pages (/, /register)
 const usersRouter = require("./routes/users"); // Handles routes for user registration (/users)
 const authRouter = require('./routes/auth');   // Handles routes for authentication (/api/auth/login)
 const zonesRouter = require('./routes/zones');   // Handles routes for managing authorized zones.
@@ -15,7 +17,44 @@ const passport = require('./middleware/passport');
 
 // Initialize the Express application
 const app = express();
-app.set('trust proxy', true);
+// Trust first proxy only (more secure than 'true')
+app.set('trust proxy', 1);
+
+// --- Security Middleware ---
+// Helmet sets various HTTP headers to help protect against common vulnerabilities
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
+      scriptSrc: ["'self'", "https://unpkg.com"],
+      imgSrc: ["'self'", "data:", "https://*.tile.openstreetmap.org", "https://unpkg.com"],
+      connectSrc: ["'self'"],
+    },
+  },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+  },
+}));
+
+// CORS configuration
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN || ['https://localhost:3443', 'https://localhost:5173'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'x-auth-token', 'Authorization'],
+};
+app.use(cors(corsOptions));
+
+// Rate limiting for authentication routes
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: { msg: 'Too many requests from this IP, please try again after 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // --- Middleware Setup ---
 // Middleware are functions that execute during the lifecycle of a request to the server.
@@ -24,9 +63,9 @@ app.set('trust proxy', true);
 // Use morgan for logging. 'dev' format provides concise, color-coded output for development.
 app.use(logger("dev"));
 // Parse incoming JSON payloads. This allows us to access `req.body`.
-app.use(express.json());
+app.use(express.json({ limit: '10kb' })); // Limit body size
 // Parse URL-encoded payloads (e.g., from HTML forms). `extended: false` uses the classic encoding.
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: false, limit: '10kb' }));
 // Parse cookies attached to the client request.
 app.use(cookieParser());
 // Serve static files (like HTML, CSS, images, and client-side JS) from the 'frontend/dist' directory.
@@ -38,7 +77,7 @@ app.use(passport.initialize());
 // Mount the imported route modules to specific URL prefixes.
 // app.use("/", indexRouter); // Commented out, replaced by React app
 app.use('/api/users', usersRouter); // Routes for user registration
-app.use('/api/auth', authRouter); // Routes for authentication API
+app.use('/api/auth', authLimiter, authRouter); // Routes for authentication API with rate limiting
 app.use('/api/zones', zonesRouter); // Routes for managing authorized zones
 
 // Catch-all route to serve the React app's index.html for client-side routing
@@ -61,14 +100,17 @@ app.use((req, res, next) => {
 
 // Global error handler. This middleware catches all errors passed by `next(err)`.
 app.use((err, req, res, next) => {
-  // Set locals, only providing the full error object in the development environment for debugging.
-  res.locals.message = err.message;
-  res.locals.error = req.app.get("env") === "development" ? err : {};
+  // Log error for debugging (but not to client)
+  console.error('Error:', err.message);
 
-  // Send the error response as JSON.
-  // Use the error's status code or default to 500 (Internal Server Error).
-  res.status(err.status || 500);
-  res.json({ error: err.message });
+  // In production, don't leak error details
+  const isProduction = req.app.get("env") === "production";
+  const status = err.status || 500;
+
+  res.status(status);
+  res.json({
+    error: isProduction && status === 500 ? 'Internal server error' : err.message
+  });
 });
 
 // Export the configured Express app so it can be used by the server startup script (bin/www).

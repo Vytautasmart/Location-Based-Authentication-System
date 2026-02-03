@@ -4,6 +4,7 @@ const router = express.Router(); // Router object to handle routes
 const pool = require("../db/postgre"); // Custom module for PostgreSQL connection pool
 const bcrypt = require("bcryptjs"); // Library for hashing passwords
 const passport = require("passport");
+const { validateRegistration } = require("../middleware/validation");
 
 /* 
  * GET users listing. 
@@ -18,7 +19,7 @@ router.get("/", (req, res, next) => {
  * @desc    Register a new user in the database with a hashed password.
  * @access  Public
  */
-router.post("/", async (req, res, next) => {
+router.post("/", validateRegistration, async (req, res, next) => {
   // Destructure the username and password from the request body.
   const { username, password } = req.body;
 
@@ -32,12 +33,12 @@ router.post("/", async (req, res, next) => {
 
     // Execute the SQL query to insert the new user into the "users" table.
     // We store the `hashedPassword`, never the original plain-text password.
-    // "RETURNING *" tells the database to return the newly created user row, including the ID.
+    // Return only id, username, and role (not password).
     const result = await pool.query(
-      "INSERT INTO users (username, password, role) VALUES ($1, $2, 'user') RETURNING *",
+      "INSERT INTO users (username, password, role) VALUES ($1, $2, 'user') RETURNING id, username, role",
       [username, hashedPassword]
     );
-    
+
     // If the user was created successfully, send a 201 (Created) status code
     // along with a success message and the new user object (excluding the password).
     res.status(201).json({

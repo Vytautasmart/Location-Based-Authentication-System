@@ -27,19 +27,29 @@ const certificate = fs.readFileSync(path.join(__dirname, '../ssl/cert.pem'), 'ut
 const credentials = { key: privateKey, cert: certificate };
 
 const httpsServer = https.createServer(credentials, app);
-const httpServer = http.createServer(app);
+
+/**
+ * Create HTTP server that redirects to HTTPS.
+ */
+const httpRedirectApp = (req, res) => {
+  const host = req.headers.host?.replace(`:${httpPort}`, `:${httpsPort}`) || `localhost:${httpsPort}`;
+  const redirectUrl = `https://${host}${req.url}`;
+  res.writeHead(301, { Location: redirectUrl });
+  res.end();
+};
+const httpServer = http.createServer(httpRedirectApp);
 
 /**
  * Listen on provided port, on all network interfaces.
  */
 
 httpsServer.listen(httpsPort);
-httpsServer.on("error", onError);
-httpsServer.on("listening", onListening);
+httpsServer.on("error", (error) => onError(error, httpsPort));
+httpsServer.on("listening", () => onListening(httpsServer, 'https'));
 
 httpServer.listen(httpPort);
-httpServer.on("error", onError);
-httpServer.on("listening", onListening);
+httpServer.on("error", (error) => onError(error, httpPort));
+httpServer.on("listening", () => onListening(httpServer, 'http (redirect)'));
 
 /**
  * Normalize a port into a number, string, or false.
@@ -65,12 +75,12 @@ function normalizePort(val) {
  * Event listener for HTTP server "error" event.
  */
 
-function onError(error) {
+function onError(error, port) {
   if (error.syscall !== "listen") {
     throw error;
   }
 
-  const bind = typeof error.port === "string" ? "Pipe " + error.port : "Port " + error.port;
+  const bind = typeof port === "string" ? "Pipe " + port : "Port " + port;
 
   // handle specific listen errors with friendly messages
   switch (error.code) {
@@ -91,12 +101,11 @@ function onError(error) {
  * Event listener for HTTP server "listening" event.
  */
 
-function onListening() {
-  const addr = this.address();
+function onListening(server, protocol) {
+  const addr = server.address();
   const bind = typeof addr === 'string'
     ? 'pipe ' + addr
     : 'port ' + addr.port;
-  const protocol = this instanceof require('https').Server ? 'https' : 'http';
   console.log(`Listening on ${protocol}://localhost:${addr.port}`);
   debug('Listening on ' + bind);
 }

@@ -6,6 +6,9 @@
 
 const pool = require("../db/postgre");
 
+// Distance threshold for spoofing detection (50km)
+const SPOOFING_DISTANCE_THRESHOLD = 50000;
+
 /**
  * Calculates the distance between two points on Earth using the Haversine formula.
  * @param {number} lat1 - Latitude of the first point.
@@ -16,14 +19,14 @@ const pool = require("../db/postgre");
  */
 function getDistance(lat1, lon1, lat2, lon2) {
   const R = 6371e3; // metres
-  const φ1 = (lat1 * Math.PI) / 180; // φ, λ in radians
-  const φ2 = (lat2 * Math.PI) / 180;
-  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+  const p1 = (lat1 * Math.PI) / 180;
+  const p2 = (lat2 * Math.PI) / 180;
+  const dp = ((lat2 - lat1) * Math.PI) / 180;
+  const dl = ((lon2 - lon1) * Math.PI) / 180;
 
   const a =
-    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    Math.sin(dp / 2) * Math.sin(dp / 2) +
+    Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) * Math.sin(dl / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
   const d = R * c; // in metres
@@ -37,10 +40,7 @@ function getDistance(lat1, lon1, lat2, lon2) {
  * @returns {Promise<boolean>} - A promise that resolves to true if the location is valid, false otherwise.
  */
 const verifyLocation = async (locationData) => {
-  console.log("Verifying location:", locationData);
-
   if (!locationData || !locationData.latitude || !locationData.longitude) {
-    console.log("Location is invalid.");
     return { isVerified: false, zoneName: null };
   }
 
@@ -57,12 +57,10 @@ const verifyLocation = async (locationData) => {
         zone.longitude
       );
       if (distance <= zone.radius) {
-        console.log(`User is within zone: ${zone.name}`);
         return { isVerified: true, zoneName: zone.name };
       }
     }
 
-    console.log("User is not in any authorized zone.");
     return { isVerified: false, zoneName: null };
   } catch (err) {
     console.error("Error verifying location:", err.message);
@@ -75,21 +73,19 @@ const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
     return { isSpoofed: false }; // Cannot verify without IP
   }
 
-  console.log(`Checking IP geolocation for: ${ip} using multiple services.`);
-
+  // Use HTTPS endpoints for geolocation services
   const services = [
-    `http://ip-api.com/json/${ip}?fields=status,lat,lon,proxy`,
-    `https://ipinfo.io/${ip}/json`,
-    `https://freegeoip.app/json/${ip}`,
+    `https://pro.ip-api.com/json/${ip}?fields=status,lat,lon,proxy&key=${process.env.IP_API_KEY || ''}`,
+    `https://ipinfo.io/${ip}/json?token=${process.env.IPINFO_TOKEN || ''}`,
   ];
 
   try {
     const promises = services.map((url) =>
-      fetch(url).then((res) => res.json())
+      fetch(url)
+        .then((res) => res.json())
+        .catch(() => null)
     );
     const results = await Promise.allSettled(promises);
-
-    console.log("Geolocation service results:", results);
 
     let bestMatch = {
       distance: Infinity,
@@ -98,7 +94,7 @@ const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
     };
 
     for (const result of results) {
-      if (result.status === "fulfilled") {
+      if (result.status === "fulfilled" && result.value) {
         const data = result.value;
         let lat,
           lon,
@@ -123,7 +119,6 @@ const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
         }
 
         if (isProxy) {
-          console.log(`Potential spoofing detected. IP is a known proxy/VPN.`);
           return { isSpoofed: true, reason: "proxy" };
         }
 
@@ -141,19 +136,13 @@ const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
       }
     }
 
-    console.log("Best match location found:", bestMatch);
-
-    if (bestMatch.distance > 100000) {
-      // 100km threshold
-      console.log(
-        `Potential spoofing detected. Best match IP location is more than 100km away.`
-      );
+    if (bestMatch.distance > SPOOFING_DISTANCE_THRESHOLD) {
       return { ...bestMatch, isSpoofed: true, reason: "distance" };
     }
 
     return { ...bestMatch, isSpoofed: false };
   } catch (error) {
-    console.error("Error in multi-service IP geolocation:", error);
+    console.error("Error in IP geolocation:", error.message);
     return { isSpoofed: false }; // Fail safe
   }
 };

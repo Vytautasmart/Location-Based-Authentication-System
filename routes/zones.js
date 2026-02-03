@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require('../db/postgre');
 const passport = require('passport');
 const { checkRole } = require('../middleware/rbac');
+const { validateZone, validateZoneId } = require('../middleware/validation');
 
 // @route   GET /api/zones
 // @desc    Get all authorized zones
@@ -20,12 +21,8 @@ router.get('/', async (req, res) => {
 // @route   POST /api/zones
 // @desc    Create a new authorized zone
 // @access  Private
-router.post('/', [passport.authenticate('jwt', { session: false }), checkRole('admin')], async (req, res) => {
+router.post('/', [passport.authenticate('jwt', { session: false }), checkRole('admin'), ...validateZone], async (req, res) => {
     const { name, latitude, longitude, radius } = req.body;
-
-    if (!name || !latitude || !longitude || !radius) {
-        return res.status(400).json({ msg: 'Please provide name, latitude, longitude, and radius' });
-    }
 
     try {
         const newZone = await pool.query(
@@ -43,13 +40,9 @@ router.post('/', [passport.authenticate('jwt', { session: false }), checkRole('a
 // @route   PUT /api/zones/:id
 // @desc    Update an authorized zone
 // @access  Private
-router.put('/:id', [passport.authenticate('jwt', { session: false }), checkRole('admin')], async (req, res) => {
+router.put('/:id', [passport.authenticate('jwt', { session: false }), checkRole('admin'), ...validateZoneId, ...validateZone], async (req, res) => {
     const { name, latitude, longitude, radius } = req.body;
     const { id } = req.params;
-
-    if (!name || !latitude || !longitude || !radius) {
-        return res.status(400).json({ msg: 'Please provide name, latitude, longitude, and radius' });
-    }
 
     try {
         const updatedZone = await pool.query(
@@ -66,7 +59,7 @@ router.put('/:id', [passport.authenticate('jwt', { session: false }), checkRole(
 // @route   DELETE /api/zones/:id
 // @desc    Delete an authorized zone
 // @access  Private
-router.delete('/:id', [passport.authenticate('jwt', { session: false }), checkRole('admin')], async (req, res) => {
+router.delete('/:id', [passport.authenticate('jwt', { session: false }), checkRole('admin'), ...validateZoneId], async (req, res) => {
     const { id } = req.params;
 
     try {

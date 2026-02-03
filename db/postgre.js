@@ -11,5 +11,10 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
+// Handle pool errors to prevent unhandled promise rejections
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle PostgreSQL client:', err.message);
+});
+
 // Export the connection pool so it can be used in other parts of the application.
 module.exports = pool;
