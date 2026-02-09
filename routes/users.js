@@ -6,14 +6,6 @@ const bcrypt = require("bcryptjs"); // Library for hashing passwords
 const passport = require("passport");
 const { validateRegistration } = require("../middleware/validation");
 
-/* 
- * GET users listing. 
- * This is a placeholder route and is not currently used by the main application.
- */
-router.get("/", (req, res, next) => {
-  res.send("respond with a resource");
-});
-
 /**
  * @route   POST /users
  * @desc    Register a new user in the database with a hashed password.
@@ -69,14 +61,6 @@ router.get('/me', passport.authenticate('jwt', { session: false }), async (req, 
         console.error(err.message);
         res.status(500).send('Server Error');
     }
-});
-
-/*
- * This is another placeholder route and is not part of the main application functionality.
- * Note: The path "./cool" is likely a typo and should be "/cool".
- */
-router.get("/cool", (req, res, next) => {
-  res.send("Youre so cool");
 });
 
 module.exports = router;

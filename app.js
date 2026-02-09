@@ -79,12 +79,10 @@ app.use(express.urlencoded({ extended: false, limit: '10kb' }));
 app.use(cookieParser());
 // Serve static files (like HTML, CSS, images, and client-side JS) from the 'frontend/dist' directory.
 app.use(express.static(path.join(__dirname, 'frontend', 'dist')));
-// app.use(express.static(path.join(__dirname, "public"))); // Commented out, replaced by React app
 app.use(passport.initialize());
 
 // --- Route Handling ---
 // Mount the imported route modules to specific URL prefixes.
-// app.use("/", indexRouter); // Commented out, replaced by React app
 app.use('/api/users', registrationLimiter, usersRouter); // Routes for user registration with rate limiting
 app.use('/api/auth', authLimiter, authRouter); // Routes for authentication API with rate limiting
 app.use('/api/zones', zonesRouter); // Routes for managing authorized zones
