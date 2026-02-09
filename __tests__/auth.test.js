@@ -29,7 +29,7 @@ describe('Auth Endpoints', () => {
 
     // Create a test user with password that meets complexity requirements
     const res = await request(app)
-      .post('/users')
+      .post('/api/users')
       .send({
         username: 'testuser',
         password: TEST_PASSWORD,
