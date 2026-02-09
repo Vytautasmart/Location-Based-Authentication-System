@@ -77,7 +77,7 @@ router.post('/access', validateAccess, (req, res, next) => {
             }
 
             if (!spoofingCheckResult.isSpoofed) {
-                const { isVerified, zoneName } = await locationService.verifyLocation({ latitude, longitude });
+                const { isVerified, zoneName } = await locationService.verifyLocation({ latitude, longitude }, user.id);
                 isLocationVerified = isVerified;
 
                 authorizationResult = await authorizationService.grantAccess(user, isLocationVerified);

@@ -23,6 +23,10 @@ function Navbar() {
           {/* Link to the dashboard page. */}
           <Link to="/dashboard">Dashboard</Link>
         </li>
+        <li>
+          {/* Link to the demo scenarios page. */}
+          <Link to="/demo">Demo</Link>
+        </li>
       </ul>
     </nav>
   );

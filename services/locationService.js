@@ -35,19 +35,42 @@ function getDistance(lat1, lon1, lat2, lon2) {
 
 /**
  * Verifies if a user's location is within an authorized zone.
+ * If a userId is provided, only checks zones assigned to that user.
+ * Falls back to all zones if no specific zones are assigned.
  *
  * @param {object} locationData - The location data from the client (e.g., { latitude, longitude }).
- * @returns {Promise<boolean>} - A promise that resolves to true if the location is valid, false otherwise.
+ * @param {number} [userId] - Optional user ID to check user-specific zone assignments.
+ * @returns {Promise<object>} - A promise that resolves to { isVerified, zoneName }.
  */
-const verifyLocation = async (locationData) => {
+const verifyLocation = async (locationData, userId) => {
   if (!locationData || !locationData.latitude || !locationData.longitude) {
     return { isVerified: false, zoneName: null };
   }
 
   try {
     const { latitude, longitude } = locationData;
-    const result = await pool.query("SELECT * FROM authorized_zones");
-    const authorizedZones = result.rows;
+    let authorizedZones;
+
+    // If userId provided, check for user-specific zone assignments first
+    if (userId) {
+      const userZonesResult = await pool.query(
+        `SELECT az.* FROM authorized_zones az
+         INNER JOIN user_zones uz ON az.id = uz.zone_id
+         WHERE uz.user_id = $1`,
+        [userId]
+      );
+
+      // If user has assigned zones, only check those
+      if (userZonesResult.rows.length > 0) {
+        authorizedZones = userZonesResult.rows;
+      }
+    }
+
+    // Fall back to all zones if no user-specific assignments
+    if (!authorizedZones) {
+      const result = await pool.query("SELECT * FROM authorized_zones");
+      authorizedZones = result.rows;
+    }
 
     for (const zone of authorizedZones) {
       const distance = getDistance(

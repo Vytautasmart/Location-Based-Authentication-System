@@ -56,6 +56,15 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Rate limiting for registration to prevent bot abuse
+const registrationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // Limit each IP to 10 registration attempts per hour
+  message: { msg: 'Too many registration attempts from this IP, please try again after an hour.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // --- Middleware Setup ---
 // Middleware are functions that execute during the lifecycle of a request to the server.
 // They are executed in the order they are defined.
@@ -70,13 +79,11 @@ app.use(express.urlencoded({ extended: false, limit: '10kb' }));
 app.use(cookieParser());
 // Serve static files (like HTML, CSS, images, and client-side JS) from the 'frontend/dist' directory.
 app.use(express.static(path.join(__dirname, 'frontend', 'dist')));
-// app.use(express.static(path.join(__dirname, "public"))); // Commented out, replaced by React app
 app.use(passport.initialize());
 
 // --- Route Handling ---
 // Mount the imported route modules to specific URL prefixes.
-// app.use("/", indexRouter); // Commented out, replaced by React app
-app.use('/api/users', usersRouter); // Routes for user registration
+app.use('/api/users', registrationLimiter, usersRouter); // Routes for user registration with rate limiting
 app.use('/api/auth', authLimiter, authRouter); // Routes for authentication API with rate limiting
 app.use('/api/zones', zonesRouter); // Routes for managing authorized zones
 

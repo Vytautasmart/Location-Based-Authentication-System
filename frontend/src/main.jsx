@@ -14,6 +14,7 @@ import App from './App.jsx';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
+import DemoPage from './pages/DemoPage';
 
 // Configure the browser router with different paths.
 const router = createBrowserRouter([
@@ -25,6 +26,7 @@ const router = createBrowserRouter([
       { path: 'login', element: <LoginPage /> },
       { path: 'register', element: <RegisterPage /> },
       { path: 'dashboard', element: <DashboardPage /> },
+      { path: 'demo', element: <DemoPage /> },
     ],
   },
 ]);
