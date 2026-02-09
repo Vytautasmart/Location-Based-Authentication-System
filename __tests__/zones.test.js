@@ -105,4 +105,111 @@ describe('Zone Endpoints', () => {
         expect(res.body.msg).toEqual('Validation failed');
       });
   });
+
+  describe('PUT /api/zones/:id', () => {
+    let zoneId;
+
+    beforeAll(async () => {
+      const result = await pool.query(
+        'INSERT INTO authorized_zones (name, latitude, longitude, radius) VALUES ($1, $2, $3, $4) RETURNING id',
+        ['Update Test Zone', 51.5, -0.12, 300]
+      );
+      zoneId = result.rows[0].id;
+    });
+
+    afterAll(async () => {
+      await pool.query('DELETE FROM authorized_zones WHERE id = $1', [zoneId]);
+    });
+
+    it('should update a zone if the user is an admin', async () => {
+      const user = { id: 1, role: 'admin' };
+      const token = jwt.sign({ user }, process.env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '1h' });
+
+      const res = await request(app)
+        .put(`/api/zones/${zoneId}`)
+        .set('x-auth-token', token)
+        .send({
+          name: 'Updated Zone Name',
+          latitude: 52.0,
+          longitude: -0.5,
+          radius: 400,
+        });
+      expect(res.statusCode).toEqual(200);
+      expect(res.body.name).toEqual('Updated Zone Name');
+      expect(res.body.radius).toEqual(400);
+    });
+
+    it('should deny update if the user is not an admin', async () => {
+      const user = { id: 1, role: 'user' };
+      const token = jwt.sign({ user }, process.env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '1h' });
+
+      const res = await request(app)
+        .put(`/api/zones/${zoneId}`)
+        .set('x-auth-token', token)
+        .send({
+          name: 'Hacked Zone',
+          latitude: 0,
+          longitude: 0,
+          radius: 9999,
+        });
+      expect(res.statusCode).toEqual(403);
+    });
+
+    it('should return 400 for invalid zone id', async () => {
+      const user = { id: 1, role: 'admin' };
+      const token = jwt.sign({ user }, process.env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '1h' });
+
+      const res = await request(app)
+        .put('/api/zones/abc')
+        .set('x-auth-token', token)
+        .send({
+          name: 'Test',
+          latitude: 10,
+          longitude: 10,
+          radius: 100,
+        });
+      expect(res.statusCode).toEqual(400);
+    });
+  });
+
+  describe('DELETE /api/zones/:id', () => {
+    let zoneId;
+
+    beforeEach(async () => {
+      const result = await pool.query(
+        'INSERT INTO authorized_zones (name, latitude, longitude, radius) VALUES ($1, $2, $3, $4) RETURNING id',
+        ['Delete Test Zone', 48.8, 2.35, 200]
+      );
+      zoneId = result.rows[0].id;
+    });
+
+    afterEach(async () => {
+      await pool.query('DELETE FROM authorized_zones WHERE name = $1', ['Delete Test Zone']);
+    });
+
+    it('should delete a zone if the user is an admin', async () => {
+      const user = { id: 1, role: 'admin' };
+      const token = jwt.sign({ user }, process.env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '1h' });
+
+      const res = await request(app)
+        .delete(`/api/zones/${zoneId}`)
+        .set('x-auth-token', token);
+      expect(res.statusCode).toEqual(200);
+      expect(res.body.msg).toEqual('Zone deleted successfully');
+
+      // Verify zone was actually deleted
+      const check = await pool.query('SELECT * FROM authorized_zones WHERE id = $1', [zoneId]);
+      expect(check.rows.length).toEqual(0);
+    });
+
+    it('should deny delete if the user is not an admin', async () => {
+      const user = { id: 1, role: 'user' };
+      const token = jwt.sign({ user }, process.env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '1h' });
+
+      const res = await request(app)
+        .delete(`/api/zones/${zoneId}`)
+        .set('x-auth-token', token);
+      expect(res.statusCode).toEqual(403);
+    });
+  });
 });

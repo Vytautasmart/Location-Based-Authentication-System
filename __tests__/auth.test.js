@@ -22,6 +22,7 @@ describe('Auth Endpoints', () => {
     jest.clearAllMocks();
 
     // Clean up before each test
+    await pool.query("DELETE FROM login_attempts WHERE username = 'testuser'");
     await pool.query("DELETE FROM refresh_tokens WHERE user_id IN (SELECT id FROM users WHERE username = 'testuser')");
     await pool.query("DELETE FROM auth_logs WHERE user_id IN (SELECT id FROM users WHERE username = 'testuser')");
     await pool.query("DELETE FROM users WHERE username = 'testuser'");
@@ -38,6 +39,7 @@ describe('Auth Endpoints', () => {
 
   afterAll(async () => {
     // Final cleanup
+    await pool.query("DELETE FROM login_attempts WHERE username = 'testuser'");
     await pool.query("DELETE FROM refresh_tokens WHERE user_id IN (SELECT id FROM users WHERE username = 'testuser')");
     await pool.query("DELETE FROM auth_logs WHERE user_id IN (SELECT id FROM users WHERE username = 'testuser')");
     await pool.query("DELETE FROM users WHERE username = 'testuser'");
@@ -216,5 +218,44 @@ describe('Auth Endpoints', () => {
       .set('Cookie', cookies);
 
     expect(logoutRes.statusCode).toEqual(200);
+  });
+
+  it('should lock account after 5 failed login attempts', async () => {
+    // Make 5 failed login attempts
+    for (let i = 0; i < 5; i++) {
+      await request(app)
+        .post('/api/auth/login')
+        .send({ username: 'testuser', password: 'WrongPass123!' });
+    }
+
+    // 6th attempt should be locked even with the correct password
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ username: 'testuser', password: TEST_PASSWORD });
+
+    expect(res.statusCode).toEqual(401);
+  });
+
+  it('should reject registration with weak password', async () => {
+    const res = await request(app)
+      .post('/api/users')
+      .send({
+        username: 'weakpassuser',
+        password: 'short',
+      });
+
+    expect(res.statusCode).toEqual(400);
+  });
+
+  it('should reject registration with duplicate username', async () => {
+    const res = await request(app)
+      .post('/api/users')
+      .send({
+        username: 'testuser',
+        password: TEST_PASSWORD,
+      });
+
+    expect(res.statusCode).toEqual(400);
+    expect(res.body.message).toEqual('Username already exists.');
   });
 });
