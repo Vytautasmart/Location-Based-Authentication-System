@@ -142,10 +142,29 @@ A testing framework using **Jest** and **Supertest** has been set up to automate
     *   POST /api/zones creates zone for admin (200)
     *   POST /api/zones returns 400 for missing fields
 
+### Spoofing Detection: Capabilities and Limitations
+
+The system's location spoofing detection works by cross-referencing the client's self-reported GPS coordinates with their IP-derived geolocation. This section documents what it can and cannot detect.
+
+**What it detects:**
+*   **VPN/Proxy usage:** Detected via ip-api.com and ipinfo.io metadata flags. If the IP is identified as a VPN, proxy, or Tor exit node, access is denied immediately.
+*   **IP-GPS distance anomalies:** If the distance between the IP-derived location and the client-reported GPS exceeds 50km, the request is flagged as spoofed. This catches cases where a user physically in one country reports coordinates in another.
+
+**What it cannot detect:**
+*   **GPS spoofing apps:** Software like "Fake GPS" on Android or jailbroken iOS devices modifies the GPS coordinates at the OS level. The browser Geolocation API returns the spoofed coordinates directly — there is no browser-level API to detect this manipulation.
+*   **Local network spoofing:** If the user is on the same local network (same IP) as the authorized zone but using a GPS spoofer, the IP check will pass since the IP location matches the zone.
+*   **Residential VPNs:** Some VPN services route traffic through residential IP addresses, which may not be flagged as proxies by geolocation providers.
+
+**Potential future improvements:**
+*   **Wi-Fi fingerprinting:** Comparing nearby Wi-Fi access points against known databases (e.g., Google's geolocation API) to get an independent location estimate.
+*   **Device sensor analysis:** Checking accelerometer, gyroscope, and barometer data for patterns inconsistent with genuine movement.
+*   **Temporal analysis:** Flagging impossible travel scenarios (e.g., login from London, then New York 10 minutes later).
+*   **Browser environment checks:** Detecting developer tools, mock geolocation settings, or known spoofing extensions.
+
 ### TODO List
 
 *   [x] Implement update and delete functionality for authorized zones in `/api/zones`.
 *   [x] Enhance the frontend to provide a user interface for managing authorized zones.
-*   [ ] Implement a join table to associate users with authorized zones for more granular control.
+*   [x] Implement a join table to associate users with authorized zones for more granular control.
+*   [x] Create a dedicated page where users can input location coordinates to test the authorization logic.
 *   [ ] Implement the mobile client strategy (either as a native app or a web-based verification flow).
-*   [ ] Create a dedicated page where users can input location coordinates to test the authorization logic.
