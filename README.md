@@ -90,39 +90,62 @@ This approach avoids a full mobile app by using a QR code on the desktop web app
 
 The application currently has the following features:
 
-*   **User Authentication:** Users can register and log in with a username and password. User credentials are securely stored in a PostgreSQL database with hashed passwords.
-*   **Role-Based Access Control (RBAC):** The application now supports RBAC with "admin" and "user" roles.
-*   **JWT-based API Authentication:** The API uses JSON Web Tokens (JWTs) for authenticating requests. The JWT payload now includes the user's role.
-*   **Location-Based Access Control:** The application can now grant or deny access based on a user's geographical location.
-*   **Authorized Zones:** The system supports the creation of authorized zones with a name, latitude, longitude, and radius. These zones are stored in the database.
-*   **Secure Zone Creation:** The `/api/zones` endpoint is now protected, and only admin users can create new zones.
-*   **Location Spoofing Detection:** The application now includes a basic IP-based location spoofing detection mechanism.
-*   **Location Verification:** The `locationService` uses the Haversine formula to determine if a user's location is within an authorized zone.
-*   **QR Code Integration:** The QR code functionality has been simplified and integrated into the main login flow.
+*   **User Authentication:** Users can register and log in with a username and password. Credentials are securely stored in PostgreSQL with bcrypt-hashed passwords and input validation (password complexity, alphanumeric usernames).
+*   **Role-Based Access Control (RBAC):** Supports "admin" and "user" roles with middleware-enforced access control.
+*   **JWT-based API Authentication:** Access tokens (15-min expiry, HS256) with refresh token rotation (7-day expiry). Refresh tokens are hashed and stored in the database, delivered via HTTPOnly secure cookies with SameSite=strict.
+*   **Location-Based Access Control:** Grants or denies access based on the user's geographical location compared to authorized zones. Admin users bypass location checks.
+*   **Authorized Zone Management (CRUD):** Full create, read, update, and delete operations for authorized zones. Only admin users can create, update, or delete zones.
+*   **Location Spoofing Detection:** IP-based spoofing detection using multiple geolocation providers (ip-api.com, ipinfo.io). Detects VPN/proxy usage and flags distance anomalies (50km threshold) between reported GPS and IP-derived location.
+*   **Location Verification:** The `locationService` uses the Haversine formula to determine if a user's location is within any authorized zone's radius.
+*   **Audit Logging:** All authentication attempts are logged to the `auth_logs` table, capturing client coordinates, IP-derived coordinates, spoofing status, access decision, and verification latency.
+*   **Security Hardening:** HTTPS with HSTS, Helmet.js security headers, Content Security Policy, CORS restrictions, rate limiting on auth endpoints (100 req/15 min), request body size limits (10KB), and timing-attack-safe credential checks.
+*   **React Frontend:** Single-page application with:
+    *   Login page with browser Geolocation API integration
+    *   User registration page
+    *   Dashboard with user profile, zone management, interactive Leaflet map, and authentication logs table
+    *   Responsive navigation bar
+
 *   **API Endpoints:**
-    *   `POST /api/auth/login`: Authenticates a user and returns a JWT.
-    *   `POST /api/auth/access`: Orchestrates the full authentication and location verification process.
-    *   `POST /api/zones`: Creates a new authorized zone (admin only).
-    *   `POST /users`: Registers a new user.
-    *   `/`: Serves the login page.
-    *   `/register`: Serves the registration page.
+
+    | Endpoint | Method | Auth | Description |
+    |----------|--------|------|-------------|
+    | `/api/auth/login` | POST | None | Authenticate user, return JWT |
+    | `/api/auth/access` | POST | None | Full auth + location verification flow |
+    | `/api/auth/refresh` | POST | Cookie | Refresh access token (token rotation) |
+    | `/api/auth/logout` | POST | Cookie | Invalidate refresh token |
+    | `/api/zones` | GET | None | List all authorized zones |
+    | `/api/zones` | POST | JWT (admin) | Create a new authorized zone |
+    | `/api/zones/:id` | PUT | JWT (admin) | Update an authorized zone |
+    | `/api/zones/:id` | DELETE | JWT (admin) | Delete an authorized zone |
+    | `/api/users` | POST | None | Register a new user |
+    | `/api/users/me` | GET | JWT | Get authenticated user profile |
 
 ### Testing
 
-A testing framework using **Jest** and **Supertest** has been set up to automate API testing. The following tests have been implemented:
+A testing framework using **Jest** and **Supertest** has been set up to automate API testing. The following tests are implemented:
 
-*   **JWT Expiration:** A test has been added to ensure that expired JWTs are correctly rejected.
-*   **Zone Creation:**
-    *   Tests to ensure that only authenticated admin users can create new zones.
-    *   A test to ensure that requests with missing fields are rejected.
-*   **Location Spoofing:**
-    *   A test to ensure that a user can log in when their device and IP locations are consistent.
-    *   A test to ensure that a user is denied access when their device and IP locations are far apart.
+*   **Authentication & Access Control (11 tests):**
+    *   Login with valid location — access granted, auth log recorded
+    *   Login with invalid location — access denied (403)
+    *   Login with spoofed location — access denied (403)
+    *   Login with wrong credentials — rejected (401)
+    *   Expired JWT token — correctly rejected (401)
+    *   Protected route without token — denied (401)
+    *   Malformed JWT token — denied (401)
+    *   Token payload contains correct user data (id, role)
+    *   Token refresh with valid refresh token — new token issued
+    *   Logout — refresh token invalidated
+*   **Zone Management (5 tests):**
+    *   GET /api/zones returns all zones
+    *   POST /api/zones denied without token (401)
+    *   POST /api/zones denied for non-admin users (403)
+    *   POST /api/zones creates zone for admin (200)
+    *   POST /api/zones returns 400 for missing fields
 
 ### TODO List
 
-*   [ ] Implement update and delete functionality for authorized zones in `/api/zones`.
+*   [x] Implement update and delete functionality for authorized zones in `/api/zones`.
+*   [x] Enhance the frontend to provide a user interface for managing authorized zones.
 *   [ ] Implement a join table to associate users with authorized zones for more granular control.
-*   [ ] Enhance the frontend to provide a user interface for managing authorized zones.
 *   [ ] Implement the mobile client strategy (either as a native app or a web-based verification flow).
 *   [ ] Create a dedicated page where users can input location coordinates to test the authorization logic.
