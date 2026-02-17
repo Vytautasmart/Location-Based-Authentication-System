@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: lbas
+      POSTGRES_USER: lbas
+      POSTGRES_PASSWORD: lbas_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lbas"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://lbas:lbas_password@db:5432/lbas
+      JWT_SECRET: docker-dev-secret-change-in-production
+      PORT: 3443
+      HTTP_PORT: 3000
+      CORS_ORIGIN: https://localhost:3443
+    ports:
+      - "3443:3443"
+      - "3000:3000"
+
+volumes:
+  pgdata:
