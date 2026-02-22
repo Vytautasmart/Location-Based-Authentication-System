@@ -11,6 +11,7 @@ function RegisterPage() {
   // State variables for the username, password, and a success message.
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const navigate = useNavigate();
 
@@ -23,6 +24,10 @@ function RegisterPage() {
    */
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      alert('Passwords do not match.');
+      return;
+    }
     try {
       // Send a POST request to the users endpoint to create a new user.
       const response = await fetch('/api/users', {
@@ -38,11 +43,17 @@ function RegisterPage() {
         setSuccessMessage('Registration successful! You will be redirected to the login page shortly.');
         setUsername('');
         setPassword('');
-        setTimeout(() => navigate('/login'), 2000); 
+        setConfirmPassword('');
+        setTimeout(() => navigate('/login'), 2000);
       } else {
         // If the registration fails, show an alert with the error message.
         const errorData = await response.json();
-        alert(`Registration failed: ${errorData.message || 'Unknown error'}`);
+        // Handle validation errors (msg + errors array) and general errors (message)
+        let errorMsg = errorData.message || errorData.msg || 'Unknown error';
+        if (errorData.errors && errorData.errors.length > 0) {
+          errorMsg = errorData.errors.map(e => e.message).join('\n');
+        }
+        alert(`Registration failed:\n${errorMsg}`);
         setSuccessMessage('');
       }
     } catch (error) {
@@ -77,7 +88,23 @@ function RegisterPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            minLength={8}
           />
+          <small style={{ color: '#888', marginTop: '0.3rem' }}>
+            Min 8 characters, with uppercase, lowercase, number, and special character.
+          </small>
+        </div>
+        <div>
+          <label htmlFor="confirmPassword">Confirm Password:</label>
+          <input
+            type="password"
+            id="confirmPassword"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            minLength={8}
+          />
+          
         </div>
         <button type="submit">Register</button>
       </form>

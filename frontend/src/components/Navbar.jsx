@@ -1,31 +1,43 @@
-// Import necessary libraries and components.
-import React from 'react';
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import './Navbar.css';
 
-/**
- * The navigation bar component.
- * It provides links to navigate between different pages in the application.
- */
 function Navbar() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const location = useLocation();
+
+  const closeMenu = () => setMenuOpen(false);
+  const isActive = (path) => location.pathname === path;
+
   return (
-    <nav>
-      <ul>
+    <nav className="navbar">
+      <Link to="/login" className="navbar-brand" onClick={closeMenu}>
+        <span className="brand-icon">🔐</span>
+        <span className="brand-text">LBAS</span>
+      </Link>
+
+      <button
+        className={`hamburger ${menuOpen ? 'open' : ''}`}
+        onClick={() => setMenuOpen(!menuOpen)}
+        aria-label="Toggle navigation"
+      >
+        <span />
+        <span />
+        <span />
+      </button>
+
+      <ul className={`nav-links ${menuOpen ? 'open' : ''}`}>
         <li>
-          {/* Link to the login page. */}
-          <Link to="/login">Login</Link>
+          <Link to="/login" className={isActive('/login') ? 'active' : ''} onClick={closeMenu}>Login</Link>
         </li>
         <li>
-          {/* Link to the registration page. */}
-          <Link to="/register">Register</Link>
+          <Link to="/register" className={isActive('/register') ? 'active' : ''} onClick={closeMenu}>Register</Link>
         </li>
         <li>
-          {/* Link to the dashboard page. */}
-          <Link to="/dashboard">Dashboard</Link>
+          <Link to="/dashboard" className={isActive('/dashboard') ? 'active' : ''} onClick={closeMenu}>Dashboard</Link>
         </li>
         <li>
-          {/* Link to the demo scenarios page. */}
-          <Link to="/demo">Demo</Link>
+          <Link to="/demo" className={isActive('/demo') ? 'active' : ''} onClick={closeMenu}>Demo</Link>
         </li>
       </ul>
     </nav>
