@@ -6,8 +6,8 @@
 
 const pool = require("../db/postgre");
 
-// Distance threshold for spoofing detection (50km)
-const SPOOFING_DISTANCE_THRESHOLD = 50000;
+// Distance threshold for spoofing detection (100km)
+const SPOOFING_DISTANCE_THRESHOLD = 100000;
 
 /**
  * Calculates the distance between two points on Earth using the Haversine formula.
@@ -96,9 +96,11 @@ const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
     return { isSpoofed: false }; // Cannot verify without IP
   }
 
-  // Use HTTPS endpoints for geolocation services
+  // Free geolocation services (no paid API key required)
+  // ip-api.com: free tier, 45 req/min, HTTP only
+  // ipinfo.io: free tier, 50k req/month
   const services = [
-    `https://pro.ip-api.com/json/${ip}?fields=status,lat,lon,proxy&key=${process.env.IP_API_KEY || ''}`,
+    `http://ip-api.com/json/${ip}?fields=status,lat,lon,proxy,hosting`,
     `https://ipinfo.io/${ip}/json?token=${process.env.IPINFO_TOKEN || ''}`,
   ];
 
@@ -128,7 +130,7 @@ const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
           // ip-api.com format
           lat = data.lat;
           lon = data.lon;
-          isProxy = data.proxy === true;
+          isProxy = data.proxy === true || data.hosting === true;
         } else if (data.loc) {
           // ipinfo.io format
           [lat, lon] = data.loc.split(",").map(Number);

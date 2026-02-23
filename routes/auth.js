@@ -70,10 +70,13 @@ router.post('/access', validateAccess, (req, res, next) => {
         let authorizationResult = { access: 'denied' };
 
         try {
-            const ip = req.headers['x-forwarded-for'] || req.ip;
+            const ip = (req.headers['x-forwarded-for']?.split(',')[0] ?? req.ip)?.trim();
+            console.log("[DEBUG] Client IP:", ip);
+            console.log("[DEBUG] Client GPS:", latitude, longitude);
 
             if (user.role !== 'admin') {
                 spoofingCheckResult = await locationService.isLocationSpoofed(ip, latitude, longitude);
+                console.log("[DEBUG] Spoofing check result:", JSON.stringify(spoofingCheckResult));
             }
 
             if (!spoofingCheckResult.isSpoofed) {

@@ -39,8 +39,13 @@ app.use(helmet({
 }));
 
 // CORS configuration
+const defaultOrigins = ['https://localhost:3443', 'https://localhost:5173'];
+const corsOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+  : defaultOrigins;
+
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN || ['https://localhost:3443', 'https://localhost:5173'],
+  origin: corsOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'x-auth-token', 'Authorization'],

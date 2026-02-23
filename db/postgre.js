@@ -6,9 +6,11 @@ const { Pool } = require("pg");
 // A connection pool is a cache of database connections maintained so that the
 // connections can be reused when future requests to the database are required.
 const pool = new Pool({
-  // The connection string is read from the `DATABASE_URL` environment variable.
-  // This is a more secure way to handle database credentials than hardcoding them in the code.
   connectionString: process.env.DATABASE_URL,
+  // Keep connections fresh — important for NeonDB which auto-suspends after inactivity.
+  // Idle connections are released after 30s, and new connection attempts time out after 5s.
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
 });
 
 // Handle pool errors to prevent unhandled promise rejections

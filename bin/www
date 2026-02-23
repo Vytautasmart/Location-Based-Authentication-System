@@ -30,8 +30,14 @@ const httpsServer = https.createServer(credentials, app);
 
 /**
  * Create HTTP server that redirects to HTTPS.
+ * When behind a reverse proxy like ngrok that already terminated TLS,
+ * the x-forwarded-proto header is 'https', so we serve the app directly
+ * instead of redirecting (which would cause an infinite redirect loop).
  */
 const httpRedirectApp = (req, res) => {
+  if (req.headers['x-forwarded-proto'] === 'https') {
+    return app(req, res);
+  }
   const host = req.headers.host?.replace(`:${httpPort}`, `:${httpsPort}`) || `localhost:${httpsPort}`;
   const redirectUrl = `https://${host}${req.url}`;
   res.writeHead(301, { Location: redirectUrl });

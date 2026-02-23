@@ -41,8 +41,6 @@ router.post("/", validateRegistration, async (req, res, next) => {
     // This block catches errors that occur during the database operation.
     // We check for a specific error code from PostgreSQL.
     if (err.code === '23505') {
-      // '23505' is the code for a "unique_violation". In this table, it means the username already exists.
-      // We return a 400 (Bad Request) status with a user-friendly error message.
       return res.status(400).json({ message: "Username already exists." });
     }
     // For any other unexpected errors, we log them and pass them to the global error handler.
