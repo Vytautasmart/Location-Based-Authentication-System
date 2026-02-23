@@ -57,7 +57,7 @@ function LocationMarker({ selectedPosition, setSelectedPosition }) {
  * @param {Function} props.setSelectedPosition - A function to update the selected position.
  * @returns {JSX.Element} The map container with all its layers.
  */
-function Map({ zones, selectedPosition, setSelectedPosition }) {
+function Map({ zones, selectedPosition, setSelectedPosition, showZoneActions = true }) {
   return (
     // The main container for the map, centered on a default location.
     <MapContainer center={[51.505, -0.09]} zoom={13} style={{ height: '400px', width: '100%' }}>
@@ -74,16 +74,24 @@ function Map({ zones, selectedPosition, setSelectedPosition }) {
           key={zone.id}
           center={[zone.latitude, zone.longitude]}
           radius={zone.radius}
+          eventHandlers={!showZoneActions ? {
+            click: (e) => {
+              // Allow dropping a pin inside a zone by clicking it
+              setSelectedPosition(e.latlng);
+              e.originalEvent.stopPropagation();
+            },
+          } : {}}
         >
-          <Popup>
-            <b>{zone.name}</b>
-            <br />
-            Radius: {zone.radius}m
-            <br />
-            {/* Buttons for editing and deleting zones. */}
-            <button className="edit-btn" data-id={zone.id}>Edit</button>
-            <button className="delete-btn" data-id={zone.id}>Delete</button>
-          </Popup>
+          {showZoneActions && (
+            <Popup>
+              <b>{zone.name}</b>
+              <br />
+              Radius: {zone.radius}m
+              <br />
+              <button className="edit-btn" data-id={zone.id}>Edit</button>
+              <button className="delete-btn" data-id={zone.id}>Delete</button>
+            </Popup>
+          )}
         </Circle>
       ))}
     </MapContainer>

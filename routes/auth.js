@@ -71,12 +71,9 @@ router.post('/access', validateAccess, (req, res, next) => {
 
         try {
             const ip = (req.headers['x-forwarded-for']?.split(',')[0] ?? req.ip)?.trim();
-            console.log("[DEBUG] Client IP:", ip);
-            console.log("[DEBUG] Client GPS:", latitude, longitude);
 
             if (user.role !== 'admin') {
                 spoofingCheckResult = await locationService.isLocationSpoofed(ip, latitude, longitude);
-                console.log("[DEBUG] Spoofing check result:", JSON.stringify(spoofingCheckResult));
             }
 
             if (!spoofingCheckResult.isSpoofed) {
@@ -134,6 +131,8 @@ router.post('/access', validateAccess, (req, res, next) => {
                     let msg = 'Access denied due to potential location spoofing.';
                     if (spoofingCheckResult.reason === 'proxy') {
                         msg = 'Access from a VPN or proxy is not allowed.';
+                    } else if (spoofingCheckResult.reason === 'country_mismatch') {
+                        msg = 'Your reported location does not match your network country.';
                     } else if (spoofingCheckResult.reason === 'distance') {
                         msg = 'Your reported location is too far from your network location.';
                     }

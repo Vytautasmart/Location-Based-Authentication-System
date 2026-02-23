@@ -25,17 +25,17 @@ function ZoneModal({ zone, onSave, onCancel }) {
   };
 
   return (
-    <div className="modal">
-      <div className="modal-content">
-        <h2>{zone ? 'Edit Zone' : 'Create Zone'}</h2>
-        <label>
-          Name:
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
-        </label>
-        <label>
-          Radius (meters):
-          <input type="number" value={radius} onChange={(e) => setRadius(e.target.value)} />
-        </label>
+    <div className="zone-form">
+      <h3>{zone?.id ? 'Edit Zone' : 'Create Zone'}</h3>
+      <label>
+        Name:
+        <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
+      </label>
+      <label>
+        Radius (meters):
+        <input type="number" value={radius} onChange={(e) => setRadius(e.target.value)} />
+      </label>
+      <div className="zone-form-actions">
         <button onClick={handleSave}>Save</button>
         <button onClick={onCancel}>Cancel</button>
       </div>
@@ -234,6 +234,16 @@ function DashboardPage() {
           <h2>Zone Management</h2>
           <Map zones={zones} selectedPosition={selectedPosition} setSelectedPosition={setSelectedPosition} />
           <button onClick={handleCreateZone}>Create Zone from Selected Location</button>
+          {isModalOpen && (
+            <ZoneModal
+              zone={editingZone}
+              onSave={handleSaveZone}
+              onCancel={() => {
+                setIsModalOpen(false);
+                setEditingZone(null);
+              }}
+            />
+          )}
         </div>
       )}
 
@@ -274,17 +284,6 @@ function DashboardPage() {
       </table>
       </div>
 
-      {/* Show the ZoneModal if it is open. */}
-      {isModalOpen && (
-        <ZoneModal
-          zone={editingZone}
-          onSave={handleSaveZone}
-          onCancel={() => {
-            setIsModalOpen(false);
-            setEditingZone(null);
-          }}
-        />
-      )}
     </div>
   );
 }

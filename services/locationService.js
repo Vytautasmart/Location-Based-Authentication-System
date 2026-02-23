@@ -6,8 +6,9 @@
 
 const pool = require("../db/postgre");
 
-// Distance threshold for spoofing detection (100km)
-const SPOOFING_DISTANCE_THRESHOLD = 100000;
+// Fallback distance threshold for spoofing detection (500km)
+// Used only when country-level comparison is unavailable
+const SPOOFING_DISTANCE_THRESHOLD = 500000;
 
 /**
  * Calculates the distance between two points on Earth using the Haversine formula.
@@ -91,39 +92,58 @@ const verifyLocation = async (locationData, userId) => {
   }
 };
 
+/**
+ * Reverse-geocodes GPS coordinates to get a country code using OpenStreetMap Nominatim.
+ * @returns {Promise<string|null>} ISO 3166-1 alpha-2 country code (e.g., "GB") or null.
+ */
+async function getCountryFromCoords(latitude, longitude) {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=3`,
+      { headers: { 'User-Agent': 'LBAS/1.0' } }
+    );
+    const data = await res.json();
+    return data.address?.country_code?.toUpperCase() || null;
+  } catch {
+    return null;
+  }
+}
+
 const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
   if (!ip) {
     return { isSpoofed: false }; // Cannot verify without IP
   }
 
   // Free geolocation services (no paid API key required)
-  // ip-api.com: free tier, 45 req/min, HTTP only
-  // ipinfo.io: free tier, 50k req/month
+  // ip-api.com: free tier, 45 req/min, HTTP only — returns countryCode
+  // ipinfo.io: free tier, 50k req/month — returns country
   const services = [
-    `http://ip-api.com/json/${ip}?fields=status,lat,lon,proxy,hosting`,
+    `http://ip-api.com/json/${ip}?fields=status,lat,lon,proxy,hosting,countryCode`,
     `https://ipinfo.io/${ip}/json?token=${process.env.IPINFO_TOKEN || ''}`,
   ];
 
   try {
-    const promises = services.map((url) =>
-      fetch(url)
-        .then((res) => res.json())
-        .catch(() => null)
-    );
-    const results = await Promise.allSettled(promises);
+    // Run IP geolocation and GPS reverse-geocoding in parallel
+    const [ipResults, gpsCountry] = await Promise.all([
+      Promise.allSettled(
+        services.map((url) =>
+          fetch(url).then((res) => res.json()).catch(() => null)
+        )
+      ),
+      getCountryFromCoords(clientLatitude, clientLongitude),
+    ]);
 
     let bestMatch = {
       distance: Infinity,
       ipLatitude: null,
       ipLongitude: null,
     };
+    let ipCountry = null;
 
-    for (const result of results) {
+    for (const result of ipResults) {
       if (result.status === "fulfilled" && result.value) {
         const data = result.value;
-        let lat,
-          lon,
-          isProxy = false;
+        let lat, lon, isProxy = false, country = null;
 
         // Normalize data from different services
         if (data.lat && data.lon) {
@@ -131,29 +151,27 @@ const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
           lat = data.lat;
           lon = data.lon;
           isProxy = data.proxy === true || data.hosting === true;
+          country = data.countryCode || null;
         } else if (data.loc) {
           // ipinfo.io format
           [lat, lon] = data.loc.split(",").map(Number);
           isProxy =
             data.bogon ||
             (data.privacy && (data.privacy.vpn || data.privacy.proxy));
-        } else if (data.latitude && data.longitude) {
-          // freegeoip.app format
-          lat = data.latitude;
-          lon = data.longitude;
+          country = data.country || null;
         }
 
         if (isProxy) {
-          return { isSpoofed: true, reason: "proxy" };
+          return { isSpoofed: true, reason: "proxy", ipLatitude: lat, ipLongitude: lon };
+        }
+
+        // Keep the first valid country code we find
+        if (country && !ipCountry) {
+          ipCountry = country.toUpperCase();
         }
 
         if (lat && lon) {
-          const distance = getDistance(
-            clientLatitude,
-            clientLongitude,
-            lat,
-            lon
-          );
+          const distance = getDistance(clientLatitude, clientLongitude, lat, lon);
           if (distance < bestMatch.distance) {
             bestMatch = { distance, ipLatitude: lat, ipLongitude: lon };
           }
@@ -161,6 +179,16 @@ const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
       }
     }
 
+    // Primary check: country-level comparison
+    if (ipCountry && gpsCountry) {
+      if (ipCountry !== gpsCountry) {
+        return { ...bestMatch, ipCountry, gpsCountry, isSpoofed: true, reason: "country_mismatch" };
+      }
+      // Same country — not spoofed
+      return { ...bestMatch, ipCountry, gpsCountry, isSpoofed: false };
+    }
+
+    // Fallback: distance-based check (only if country comparison unavailable)
     if (bestMatch.distance > SPOOFING_DISTANCE_THRESHOLD) {
       return { ...bestMatch, isSpoofed: true, reason: "distance" };
     }

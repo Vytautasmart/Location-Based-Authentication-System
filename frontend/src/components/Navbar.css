@@ -10,7 +10,7 @@
   box-shadow: 0 2px 12px rgba(15, 23, 42, 0.2);
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 1000;
 }
 
 .navbar-brand {
@@ -118,17 +118,24 @@
     flex-direction: column;
     align-items: stretch;
     background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%);
-    padding: 0.75rem;
-    gap: 0.25rem;
+    padding: 0.5rem 0.75rem;
+    gap: 0.15rem;
     box-shadow: 0 6px 16px rgba(15, 23, 42, 0.2);
+    z-index: 1000;
   }
 
   .nav-links.open {
     display: flex;
   }
 
+  .nav-links li {
+    list-style: none;
+  }
+
   .nav-links a {
+    display: block;
     padding: 0.75rem 1rem;
     font-size: 1rem;
+    border-radius: 8px;
   }
 }

@@ -66,6 +66,45 @@
   font-size: 0.9rem;
 }
 
+/* Constrain Leaflet map below the navbar */
+.leaflet-container {
+  z-index: 0;
+}
+
+/* Inline zone form (below map) */
+.zone-form {
+  margin-top: 1rem;
+  padding: 1.2rem;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.zone-form h3 {
+  margin: 0 0 0.75rem;
+  color: var(--primary-dark);
+}
+
+.zone-form label {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.zone-form input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 0.25rem;
+}
+
+.zone-form-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
 @media (max-width: 600px) {
   .page-container {
     margin: 1rem;

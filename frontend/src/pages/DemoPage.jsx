@@ -95,7 +95,7 @@ function DemoPage() {
 
       <h3>1. Select Location</h3>
       <p style={{ color: '#666', fontSize: '0.9rem' }}>Click the map or enter coordinates manually.</p>
-      <Map zones={zones} selectedPosition={selectedPosition} setSelectedPosition={setSelectedPosition} />
+      <Map zones={zones} selectedPosition={selectedPosition} setSelectedPosition={setSelectedPosition} showZoneActions={false} />
 
       <div style={{ display: 'flex', gap: '1rem', margin: '1rem 0', justifyContent: 'center', flexWrap: 'wrap' }}>
         <div>
