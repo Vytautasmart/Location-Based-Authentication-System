@@ -77,9 +77,9 @@ const registrationLimiter = rateLimit({
 // Use morgan for logging. 'dev' format provides concise, color-coded output for development.
 app.use(logger("dev"));
 // Parse incoming JSON payloads. This allows us to access `req.body`.
-app.use(express.json({ limit: '10kb' })); // Limit body size
+app.use(express.json({ limit: '1mb' }));
 // Parse URL-encoded payloads (e.g., from HTML forms). `extended: false` uses the classic encoding.
-app.use(express.urlencoded({ extended: false, limit: '10kb' }));
+app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 // Parse cookies attached to the client request.
 app.use(cookieParser());
 // Serve static files (like HTML, CSS, images, and client-side JS) from the 'frontend/dist' directory.

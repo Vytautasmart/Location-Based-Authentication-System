@@ -73,15 +73,31 @@ const verifyLocation = async (locationData, userId) => {
       authorizedZones = result.rows;
     }
 
+    // Check circular zones first (no external API call needed)
     for (const zone of authorizedZones) {
-      const distance = getDistance(
-        latitude,
-        longitude,
-        zone.latitude,
-        zone.longitude
+      if (zone.type !== 'w3w' && zone.latitude && zone.longitude && zone.radius) {
+        const distance = getDistance(latitude, longitude, zone.latitude, zone.longitude);
+        if (distance <= zone.radius) {
+          return { isVerified: true, zoneName: zone.name };
+        }
+      }
+    }
+
+    // Check microgrid zones (local computation, no external API call)
+    const w3wZones = authorizedZones.filter(z => z.type === 'w3w');
+    if (w3wZones.length > 0) {
+      const w3wService = require('./w3wService');
+      const { words: userWords } = w3wService.coordsToWords(latitude, longitude);
+
+      const w3wZoneIds = w3wZones.map(z => z.id);
+      const matchResult = await pool.query(
+        'SELECT zone_id FROM w3w_zone_squares WHERE zone_id = ANY($1) AND words = $2 LIMIT 1',
+        [w3wZoneIds, userWords]
       );
-      if (distance <= zone.radius) {
-        return { isVerified: true, zoneName: zone.name };
+
+      if (matchResult.rows.length > 0) {
+        const matchedZone = w3wZones.find(z => z.id === matchResult.rows[0].zone_id);
+        return { isVerified: true, zoneName: matchedZone.name };
       }
     }
 

@@ -105,6 +105,22 @@
   margin-top: 0.5rem;
 }
 
+/* Zone type radio toggle */
+.zone-type-toggle {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.zone-type-toggle label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
 @media (max-width: 600px) {
   .page-container {
     margin: 1rem;
