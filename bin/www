@@ -12,50 +12,62 @@ const fs = require("fs");
 const path = require("path");
 
 /**
- * Get port from environment and store in Express.
+ * Detect if running behind a managed proxy (Render, Railway, etc.)
+ * These platforms set PORT and handle SSL termination for us.
  */
-const httpsPort = normalizePort(process.env.PORT || '3443');
-const httpPort = normalizePort(process.env.HTTP_PORT || '3000');
-app.set('port', httpsPort);
+const isBehindProxy = process.env.RENDER || process.env.RAILWAY_ENVIRONMENT;
 
+if (isBehindProxy) {
+  /**
+   * Production: plain HTTP on the platform-provided PORT.
+   * The platform handles HTTPS termination.
+   */
+  const port = normalizePort(process.env.PORT || '3000');
+  app.set('port', port);
 
-/**
- * Create HTTPS server.
- */
-const privateKey = fs.readFileSync(path.join(__dirname, '../ssl/key.pem'), 'utf8');
-const certificate = fs.readFileSync(path.join(__dirname, '../ssl/cert.pem'), 'utf8');
-const credentials = { key: privateKey, cert: certificate };
+  const server = http.createServer(app);
+  server.listen(port);
+  server.on("error", (error) => onError(error, port));
+  server.on("listening", () => onListening(server, 'http'));
+} else {
+  /**
+   * Local development: HTTPS with self-signed certs + HTTP redirect.
+   */
+  const httpsPort = normalizePort(process.env.PORT || '3443');
+  const httpPort = normalizePort(process.env.HTTP_PORT || '3000');
+  app.set('port', httpsPort);
 
-const httpsServer = https.createServer(credentials, app);
+  const privateKey = fs.readFileSync(path.join(__dirname, '../ssl/key.pem'), 'utf8');
+  const certificate = fs.readFileSync(path.join(__dirname, '../ssl/cert.pem'), 'utf8');
+  const credentials = { key: privateKey, cert: certificate };
 
-/**
- * Create HTTP server that redirects to HTTPS.
- * When behind a reverse proxy like ngrok that already terminated TLS,
- * the x-forwarded-proto header is 'https', so we serve the app directly
- * instead of redirecting (which would cause an infinite redirect loop).
- */
-const httpRedirectApp = (req, res) => {
-  if (req.headers['x-forwarded-proto'] === 'https') {
-    return app(req, res);
-  }
-  const host = req.headers.host?.replace(`:${httpPort}`, `:${httpsPort}`) || `localhost:${httpsPort}`;
-  const redirectUrl = `https://${host}${req.url}`;
-  res.writeHead(301, { Location: redirectUrl });
-  res.end();
-};
-const httpServer = http.createServer(httpRedirectApp);
+  const httpsServer = https.createServer(credentials, app);
 
-/**
- * Listen on provided port, on all network interfaces.
- */
+  /**
+   * HTTP server that redirects to HTTPS.
+   * When behind a reverse proxy like ngrok that already terminated TLS,
+   * the x-forwarded-proto header is 'https', so we serve the app directly
+   * instead of redirecting (which would cause an infinite redirect loop).
+   */
+  const httpRedirectApp = (req, res) => {
+    if (req.headers['x-forwarded-proto'] === 'https') {
+      return app(req, res);
+    }
+    const host = req.headers.host?.replace(`:${httpPort}`, `:${httpsPort}`) || `localhost:${httpsPort}`;
+    const redirectUrl = `https://${host}${req.url}`;
+    res.writeHead(301, { Location: redirectUrl });
+    res.end();
+  };
+  const httpServer = http.createServer(httpRedirectApp);
 
-httpsServer.listen(httpsPort);
-httpsServer.on("error", (error) => onError(error, httpsPort));
-httpsServer.on("listening", () => onListening(httpsServer, 'https'));
+  httpsServer.listen(httpsPort);
+  httpsServer.on("error", (error) => onError(error, httpsPort));
+  httpsServer.on("listening", () => onListening(httpsServer, 'https'));
 
-httpServer.listen(httpPort);
-httpServer.on("error", (error) => onError(error, httpPort));
-httpServer.on("listening", () => onListening(httpServer, 'http (redirect)'));
+  httpServer.listen(httpPort);
+  httpServer.on("error", (error) => onError(error, httpPort));
+  httpServer.on("listening", () => onListening(httpServer, 'http (redirect)'));
+}
 
 /**
  * Normalize a port into a number, string, or false.
