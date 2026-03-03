@@ -11,6 +11,7 @@ import './index.css';
 import App from './App.jsx';
 
 // Import page components for routing.
+import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
@@ -23,6 +24,7 @@ const router = createBrowserRouter([
     element: <App />,
     // Define nested routes for different pages.
     children: [
+      { index: true, element: <LandingPage /> },
       { path: 'login', element: <LoginPage /> },
       { path: 'register', element: <RegisterPage /> },
       { path: 'dashboard', element: <DashboardPage /> },

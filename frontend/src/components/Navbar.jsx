@@ -11,7 +11,7 @@ function Navbar() {
 
   return (
     <nav className="navbar">
-      <Link to="/login" className="navbar-brand" onClick={closeMenu}>
+      <Link to="/" className="navbar-brand" onClick={closeMenu}>
         <span className="brand-icon">🔐</span>
         <span className="brand-text">LBAS</span>
       </Link>
