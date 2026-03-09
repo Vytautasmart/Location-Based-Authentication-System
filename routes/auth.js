@@ -54,24 +54,35 @@ router.post('/login', validateLogin, passport.authenticate('local', { session: f
  * @access  Public
  */
 router.post('/access', validateAccess, (req, res, next) => {
+    const startTime = Date.now();
+    const { latitude, longitude } = req.body;
+    const ip = (req.headers['x-forwarded-for']?.split(',')[0] ?? req.ip)?.trim();
+
     passport.authenticate('local', { session: false }, async (err, user, info) => {
         if (err) {
             return next(err);
         }
-        if (!user) {
-            return res.status(400).json({ msg: info.message || 'Invalid credentials' });
-        }
 
-        const startTime = Date.now();
-        const { latitude, longitude } = req.body;
+        // Log failed credential attempts to auth_logs
+        if (!user) {
+            try {
+                const latency = Date.now() - startTime;
+                await pool.query(
+                    `INSERT INTO auth_logs(user_id, client_latitude, client_longitude, ip_address, is_location_verified, is_spoofed, access_granted, latency)
+                     VALUES(NULL, $1, $2, $3, FALSE, FALSE, FALSE, $4)`,
+                    [latitude, longitude, ip, latency]
+                );
+            } catch (logErr) {
+                console.error('Failed to log auth attempt:', logErr.message);
+            }
+            return res.status(401).json({ msg: info.message || 'Invalid credentials' });
+        }
 
         let isLocationVerified = false;
         let spoofingCheckResult = { isSpoofed: false };
         let authorizationResult = { access: 'denied' };
 
         try {
-            const ip = (req.headers['x-forwarded-for']?.split(',')[0] ?? req.ip)?.trim();
-
             if (user.role !== 'admin') {
                 spoofingCheckResult = await locationService.isLocationSpoofed(ip, latitude, longitude);
             }
@@ -113,7 +124,7 @@ router.post('/access', validateAccess, (req, res, next) => {
 
                 res.cookie('refreshToken', refreshToken, {
                     httpOnly: true,
-                    secure: true, // Always use secure cookies
+                    secure: true,
                     expires: refreshTokenExpiry,
                     sameSite: 'strict'
                 });
