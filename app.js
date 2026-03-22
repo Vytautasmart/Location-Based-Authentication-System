@@ -36,6 +36,7 @@ app.use(helmet({
     maxAge: 31536000,
     includeSubDomains: true,
   },
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 }));
 
 // CORS configuration
