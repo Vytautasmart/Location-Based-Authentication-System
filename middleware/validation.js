@@ -27,6 +27,11 @@ const validateLogin = [
         .isString()
         .isLength({ min: 8, max: 128 })
         .withMessage('Password must be between 8 and 128 characters'),
+    body('totpCode')
+        .optional()
+        .isString()
+        .matches(/^\d{6}$/)
+        .withMessage('TOTP code must be 6 digits'),
     handleValidationErrors
 ];
 
@@ -49,6 +54,11 @@ const validateAccess = [
     body('longitude')
         .isFloat({ min: -180, max: 180 })
         .withMessage('Longitude must be between -180 and 180'),
+    body('totpCode')
+        .optional()
+        .isString()
+        .matches(/^\d{6}$/)
+        .withMessage('TOTP code must be 6 digits'),
     handleValidationErrors
 ];
 
