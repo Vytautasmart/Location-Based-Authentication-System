@@ -1,0 +1,50 @@
+# Render Blueprint for the Location-Based Authentication System.
+#
+# What this declares:
+#   - A single Node web service that builds the frontend, then serves the
+#     Express backend on Render's $PORT (bin/www auto-detects RENDER=true and
+#     switches to plain HTTP — Render terminates TLS for you).
+#
+# What this intentionally does NOT declare:
+#   - The Postgres database. Use the existing Render Postgres add-on or
+#     external DB you already have, and paste its connection string into the
+#     DATABASE_URL secret below.
+#
+# Env vars marked `sync: false` are filled in via the Render dashboard
+# (Service → Environment) so secrets never end up in git.
+
+services:
+  - type: web
+    name: lbas
+    runtime: node
+    plan: free
+    region: frankfurt   # change if you prefer another region
+    branch: main
+    autoDeploy: true
+
+    buildCommand: |
+      npm install
+      npm install --prefix frontend
+      npm run build-frontend
+
+    startCommand: node ./bin/www
+
+    healthCheckPath: /api/zones
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # --- Secrets — set values in the Render dashboard, not in this file ---
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: REFRESH_TOKEN_PEPPER
+        sync: false
+
+      # --- Optional ---
+      - key: IPINFO_TOKEN
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
