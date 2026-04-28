@@ -1,150 +1,225 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Map from '../components/Map';
 import './Page.css';
+import './DemoPage.css';
+
+/* ===========================================================================
+ * Stage derivation
+ *
+ * From a single /api/auth/access response we infer the status of every stage
+ * in the pipeline. The backend doesn't return a per-stage breakdown, so we
+ * reason backwards from the HTTP code + message.
+ * =========================================================================*/
+
+const STAGE_PASS = 'pass';
+const STAGE_FAIL = 'fail';
+const STAGE_SKIP = 'skip';
+const STAGE_PEND = 'pending';
+
+const STAGE_DEFS = [
+  {
+    id: 'validation',
+    label: 'Input Validation',
+    detail: 'Check username/password length and that lat/lng are real numbers.',
+  },
+  {
+    id: 'credentials',
+    label: 'Credentials',
+    detail: 'bcrypt-compare the password. Account lockout kicks in after 5 fails / 15 min.',
+  },
+  {
+    id: 'mfa',
+    label: 'MFA',
+    detail: 'TOTP code (RFC 6238). Skipped if the user has not enrolled.',
+  },
+  {
+    id: 'spoof',
+    label: 'IP Spoof Check',
+    detail: 'Cross-references ip-api.com + ipinfo.io vs OSM reverse-geocoded country. Detects VPN/proxy.',
+  },
+  {
+    id: 'zone',
+    label: 'Zone Match',
+    detail: 'Submitted GPS point checked against assigned zones (3m grid first, then circular).',
+  },
+  {
+    id: 'token',
+    label: 'Token Issued',
+    detail: 'JWT (15 min) + rotated refresh-token cookie set on success.',
+  },
+];
 
 /**
- * Classifies the result into a scenario type for detailed explanation.
+ * Map a finished /access response to a per-stage status.
+ * `pendingStage` lets us animate a "this is the stage we're stuck at" state.
  */
+function deriveStages(result, totpSubmitted) {
+  if (!result) {
+    return STAGE_DEFS.map((s) => ({ ...s, status: STAGE_PEND }));
+  }
+  const { status, data } = result;
+  const msg = data?.msg || data?.message || '';
+
+  // Default everything to skipped, then walk forward filling in.
+  const out = STAGE_DEFS.map((s) => ({ ...s, status: STAGE_SKIP }));
+
+  // 400 = validation failure. Nothing else got to run.
+  if (status === 400) {
+    out[0].status = STAGE_FAIL;
+    return out;
+  }
+  out[0].status = STAGE_PASS;
+
+  // 401 with no MFA hint → bad credentials.
+  if (status === 401 && data?.mfa !== 'required' && !msg.includes('TOTP')) {
+    out[1].status = STAGE_FAIL;
+    return out;
+  }
+  out[1].status = STAGE_PASS;
+
+  // 401 with mfa=required, OR a TOTP-related error message.
+  if (status === 401 && (data?.mfa === 'required' || msg.includes('TOTP'))) {
+    out[2].status = totpSubmitted ? STAGE_FAIL : STAGE_PEND;
+    return out;
+  }
+
+  // If we got past the credentials gate and the user actually sent a TOTP,
+  // we can colour it green. Otherwise it was simply skipped (no MFA enrolled).
+  out[2].status = totpSubmitted ? STAGE_PASS : STAGE_SKIP;
+
+  // 403 messages tell us which downstream check failed.
+  if (status === 403) {
+    if (msg.includes('VPN') || msg.includes('country') || msg.includes('too far') || msg.includes('spoof')) {
+      out[3].status = STAGE_FAIL;
+      return out;
+    }
+    out[3].status = STAGE_PASS;
+
+    if (msg.includes('not in an authorized')) {
+      out[4].status = STAGE_FAIL;
+      return out;
+    }
+  }
+
+  // 200 path
+  if (status === 200) {
+    // Admin bypass keeps spoof + zone as "skipped" because the backend doesn't run them.
+    if (data?.message?.includes('Admin')) {
+      out[3].status = STAGE_SKIP;
+      out[4].status = STAGE_SKIP;
+    } else {
+      out[3].status = STAGE_PASS;
+      out[4].status = STAGE_PASS;
+    }
+    out[5].status = STAGE_PASS;
+    return out;
+  }
+
+  // 500 / unknown — leave the rest as skipped, mark the next-up stage as fail.
+  for (const s of out) {
+    if (s.status === STAGE_SKIP) { s.status = STAGE_FAIL; break; }
+  }
+  return out;
+}
+
+/* ===========================================================================
+ * Scenario classifier (kept from the previous demo for the detail panel)
+ * =========================================================================*/
+
 function classifyResult(status, data) {
   if (status === 0) return 'network_error';
-  if (status === 400 && data.errors) return 'validation_error';
+  if (status === 400 && data?.errors) return 'validation_error';
   if (status === 400) return 'bad_request';
+  if (status === 401 && (data?.mfa === 'required' || data?.msg?.includes('TOTP code required'))) return 'mfa_required';
+  if (status === 401 && data?.msg?.includes('Invalid TOTP')) return 'mfa_failed';
   if (status === 401) return 'invalid_credentials';
-  if (status === 403 && data.msg?.includes('spoofing')) return 'spoofed_generic';
-  if (status === 403 && data.msg?.includes('VPN or proxy')) return 'spoofed_proxy';
-  if (status === 403 && data.msg?.includes('network country')) return 'spoofed_country';
-  if (status === 403 && data.msg?.includes('too far')) return 'spoofed_distance';
-  if (status === 403 && data.msg?.includes('not in an authorized')) return 'outside_zone';
-  if (status === 200 && data.message?.includes('Admin')) return 'admin_granted';
-  if (status === 200 && data.access === 'granted') return 'granted';
+  if (status === 403 && data?.msg?.includes('VPN or proxy')) return 'spoofed_proxy';
+  if (status === 403 && data?.msg?.includes('network country')) return 'spoofed_country';
+  if (status === 403 && data?.msg?.includes('too far')) return 'spoofed_distance';
+  if (status === 403 && data?.msg?.includes('spoof')) return 'spoofed_generic';
+  if (status === 403 && data?.msg?.includes('not in an authorized')) return 'outside_zone';
+  if (status === 200 && data?.message?.includes('Admin')) return 'admin_granted';
+  if (status === 200 && data?.access === 'granted') return 'granted';
   if (status === 500) return 'server_error';
   return 'unknown';
 }
 
-const scenarioInfo = {
-  network_error: {
-    title: 'Network Error',
-    icon: 'X',
-    color: '#856404',
-    bg: '#fff3cd',
-    border: '#ffc107',
-    explanation: 'The request could not reach the server. This could be a network issue, CORS error, or the server may be down.',
-  },
-  validation_error: {
-    title: 'Validation Failed',
-    icon: '!',
-    color: '#856404',
-    bg: '#fff3cd',
-    border: '#ffc107',
-    explanation: 'The request was rejected because input validation failed. Check that username, password, and coordinates are in the correct format.',
-  },
-  bad_request: {
-    title: 'Bad Request',
-    icon: '!',
-    color: '#856404',
-    bg: '#fff3cd',
-    border: '#ffc107',
-    explanation: 'The server rejected the request due to invalid or missing data.',
-  },
-  invalid_credentials: {
-    title: 'Invalid Credentials',
-    icon: 'X',
-    color: '#721c24',
-    bg: '#f8d7da',
-    border: '#f5c6cb',
-    explanation: 'Authentication failed at the first step — the username or password is incorrect. Location checks are never reached because credentials are verified first.',
-  },
-  spoofed_proxy: {
-    title: 'Spoofing Detected — VPN/Proxy',
-    icon: '!',
-    color: '#721c24',
-    bg: '#f8d7da',
-    border: '#f5c6cb',
-    explanation: 'Your IP address was identified as belonging to a VPN, proxy, or hosting provider. The system blocks these because they can be used to mask your true location.',
-  },
-  spoofed_country: {
-    title: 'Spoofing Detected — Country Mismatch',
-    icon: '!',
-    color: '#721c24',
-    bg: '#f8d7da',
-    border: '#f5c6cb',
-    explanation: 'The country derived from your IP address does not match the country of the GPS coordinates you submitted. This indicates your reported location may be falsified.',
-  },
-  spoofed_distance: {
-    title: 'Spoofing Detected — Distance Threshold',
-    icon: '!',
-    color: '#721c24',
-    bg: '#f8d7da',
-    border: '#f5c6cb',
-    explanation: 'Your reported GPS location is too far from where your IP address geolocates. This fallback check triggers when country-level comparison is unavailable.',
-  },
-  spoofed_generic: {
-    title: 'Spoofing Detected',
-    icon: '!',
-    color: '#721c24',
-    bg: '#f8d7da',
-    border: '#f5c6cb',
-    explanation: 'The system detected that your reported location may be spoofed based on IP geolocation analysis.',
-  },
-  outside_zone: {
-    title: 'Outside Authorized Zone',
-    icon: 'X',
-    color: '#721c24',
-    bg: '#f8d7da',
-    border: '#f5c6cb',
-    explanation: 'Credentials are valid and no spoofing was detected, but the GPS coordinates are not within any authorized zone. The user must be physically inside a zone to gain access.',
-  },
-  admin_granted: {
-    title: 'Access Granted — Admin Bypass',
-    icon: '\u2713',
-    color: '#155724',
-    bg: '#d4edda',
-    border: '#c3e6cb',
-    explanation: 'Admin users bypass all location checks. Access was granted solely based on valid credentials, regardless of the submitted coordinates.',
-  },
-  granted: {
-    title: 'Access Granted',
-    icon: '\u2713',
-    color: '#155724',
-    bg: '#d4edda',
-    border: '#c3e6cb',
-    explanation: 'Credentials are valid, no spoofing detected, and the GPS coordinates fall within an authorized zone. A JWT token and refresh token were issued.',
-  },
-  server_error: {
-    title: 'Server Error',
-    icon: 'X',
-    color: '#721c24',
-    bg: '#f8d7da',
-    border: '#f5c6cb',
-    explanation: 'An internal server error occurred during authentication. Check the server logs for details.',
-  },
-  unknown: {
-    title: 'Unknown Response',
-    icon: '?',
-    color: '#856404',
-    bg: '#fff3cd',
-    border: '#ffc107',
-    explanation: 'The server returned an unexpected response.',
-  },
+const SCENARIOS = {
+  network_error:       { tone: 'warn',  title: 'Network Error',                     blurb: 'The request never reached the server. Likely network/CORS issue.' },
+  validation_error:    { tone: 'warn',  title: 'Validation Failed',                 blurb: 'Input was rejected before any auth checks ran.' },
+  bad_request:         { tone: 'warn',  title: 'Bad Request',                       blurb: 'The server rejected the request shape.' },
+  invalid_credentials: { tone: 'fail',  title: 'Invalid Credentials',               blurb: 'Stopped at step 2. Location checks were never reached.' },
+  mfa_required:        { tone: 'warn',  title: 'MFA Required',                      blurb: 'Credentials are valid; the user has TOTP enrolled. Submit a 6-digit code to continue.' },
+  mfa_failed:          { tone: 'fail',  title: 'MFA Failed',                        blurb: 'Credentials were valid but the TOTP code was wrong or expired.' },
+  spoofed_proxy:       { tone: 'fail',  title: 'Spoof Detected — VPN / Proxy',      blurb: 'The IP was flagged as VPN/proxy/hosting. Blocked at step 4.' },
+  spoofed_country:     { tone: 'fail',  title: 'Spoof Detected — Country Mismatch', blurb: 'IP-derived country ≠ GPS-derived country. Blocked at step 4.' },
+  spoofed_distance:    { tone: 'fail',  title: 'Spoof Detected — Distance',         blurb: 'IP location too far from claimed GPS. Distance fallback triggered.' },
+  spoofed_generic:     { tone: 'fail',  title: 'Spoof Detected',                    blurb: 'IP/GPS analysis flagged the attempt.' },
+  outside_zone:        { tone: 'fail',  title: 'Outside Authorized Zone',           blurb: 'Past credentials and spoof check, but the GPS point matched no zone.' },
+  admin_granted:       { tone: 'pass',  title: 'Granted — Admin Bypass',            blurb: 'Admin role skips spoof + zone checks. Token issued on credentials alone.' },
+  granted:             { tone: 'pass',  title: 'Granted',                           blurb: 'All five checks passed. JWT + refresh cookie issued.' },
+  server_error:        { tone: 'fail',  title: 'Server Error',                      blurb: 'Internal error during processing. Check server logs.' },
+  unknown:             { tone: 'warn',  title: 'Unknown Response',                  blurb: 'The server returned a response we did not expect.' },
 };
 
-/**
- * Demo page for testing location-based authentication scenarios.
- */
+/* ===========================================================================
+ * Pipeline visualisation
+ * =========================================================================*/
+
+function StatusGlyph({ status }) {
+  if (status === STAGE_PASS) return '✓';
+  if (status === STAGE_FAIL) return '✕';
+  if (status === STAGE_SKIP) return '–';
+  return '…';
+}
+
+function Pipeline({ stages, running }) {
+  return (
+    <ol className={`pipeline ${running ? 'pipeline--running' : ''}`}>
+      {stages.map((s, i) => (
+        <li key={s.id} className={`stage stage--${s.status}`} style={{ animationDelay: `${i * 80}ms` }}>
+          <div className="stage-bubble" title={s.detail}>
+            <StatusGlyph status={s.status} />
+          </div>
+          <div className="stage-label">{s.label}</div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/* ===========================================================================
+ * Preset scenarios — quickly fill the form to demonstrate a flow
+ * =========================================================================*/
+
+const PRESETS = [
+  { id: 'inside',    label: 'In-zone (granted)',          help: 'Click a real zone on the map first, then run.' },
+  { id: 'outside',   label: 'Outside zone',               coords: { lat: 0, lng: 0 } },
+  { id: 'tokyo',     label: 'Country mismatch',           coords: { lat: 35.6762, lng: 139.6503 } },
+  { id: 'invalid',   label: 'Wrong password',             user: { username: 'doesnotexist_demo', password: 'WrongPass123!' } },
+  { id: 'malformed', label: 'Validation error',           coords: { lat: 999, lng: 0 } },
+];
+
+/* ===========================================================================
+ * Main component
+ * =========================================================================*/
+
 function DemoPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [totpCode, setTotpCode] = useState('');
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
   const [zones, setZones] = useState([]);
   const [selectedPosition, setSelectedPosition] = useState(null);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [stagesOverride, setStagesOverride] = useState(null); // for animation
 
   useEffect(() => {
     fetch('/api/zones')
-      .then((res) => res.ok ? res.json() : [])
-      .then((data) => setZones(data))
+      .then((res) => (res.ok ? res.json() : []))
+      .then(setZones)
       .catch(() => setZones([]));
   }, []);
 
@@ -156,10 +231,7 @@ function DemoPage() {
   }, [selectedPosition]);
 
   const useCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser');
-      return;
-    }
+    if (!navigator.geolocation) return alert('Geolocation is not supported by your browser');
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude: lat, longitude: lng } = position.coords;
@@ -171,180 +243,177 @@ function DemoPage() {
     );
   };
 
+  const applyPreset = (preset) => {
+    if (preset.user) {
+      setUsername(preset.user.username);
+      setPassword(preset.user.password);
+    }
+    if (preset.coords) {
+      setLatitude(String(preset.coords.lat));
+      setLongitude(String(preset.coords.lng));
+    }
+  };
+
   const handleTest = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     setResult(null);
+    setStagesOverride(null);
     setLoading(true);
 
+    // Animate the pending pipeline forward while the request flies.
+    const fakeStages = STAGE_DEFS.map((s) => ({ ...s, status: STAGE_PEND }));
+    setStagesOverride(fakeStages);
+
     try {
+      const body = {
+        username,
+        password,
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+      };
+      if (totpCode) body.totpCode = totpCode;
+
       const response = await fetch('/api/auth/access', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username,
-          password,
-          latitude: parseFloat(latitude),
-          longitude: parseFloat(longitude),
-        }),
+        body: JSON.stringify(body),
       });
-
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
       setResult({ status: response.status, success: response.ok, data });
     } catch (error) {
-      setResult({
-        status: 0,
-        success: false,
-        data: { msg: 'Network error: ' + error.message },
-      });
+      setResult({ status: 0, success: false, data: { msg: 'Network error: ' + error.message } });
     } finally {
+      setStagesOverride(null);
       setLoading(false);
     }
   };
 
-  const scenario = result ? classifyResult(result.status, result.data) : null;
-  const info = scenario ? scenarioInfo[scenario] : null;
+  const stages = useMemo(
+    () => stagesOverride || deriveStages(result, !!totpCode),
+    [stagesOverride, result, totpCode]
+  );
+
+  const scenarioKey = result ? classifyResult(result.status, result.data) : null;
+  const scenario = scenarioKey ? SCENARIOS[scenarioKey] : null;
 
   return (
-    <div className="page-container" style={{ maxWidth: '800px' }}>
-      <h1>Demo Scenarios</h1>
-      <p style={{ textAlign: 'center', color: '#666', marginBottom: '1.5rem' }}>
-        Test location-based authentication by entering credentials and selecting a location.
-        The map shows authorized zones — try locations inside and outside them.
-      </p>
-
-      <h3>1. Select Location</h3>
-      <p style={{ color: '#666', fontSize: '0.9rem' }}>Click the map or enter coordinates manually.</p>
-      <Map zones={zones} selectedPosition={selectedPosition} setSelectedPosition={setSelectedPosition} showZoneActions={false} />
-
-      <div style={{ display: 'flex', gap: '1rem', margin: '1rem 0', justifyContent: 'center', flexWrap: 'wrap' }}>
-        <div>
-          <label htmlFor="demo-lat">Latitude: </label>
-          <input
-            id="demo-lat"
-            type="number"
-            step="any"
-            value={latitude}
-            onChange={(e) => setLatitude(e.target.value)}
-            style={{ width: '150px', padding: '0.4rem' }}
-          />
-        </div>
-        <div>
-          <label htmlFor="demo-lng">Longitude: </label>
-          <input
-            id="demo-lng"
-            type="number"
-            step="any"
-            value={longitude}
-            onChange={(e) => setLongitude(e.target.value)}
-            style={{ width: '150px', padding: '0.4rem' }}
-          />
-        </div>
-        <button
-          type="button"
-          onClick={useCurrentLocation}
-          style={{ padding: '0.4rem 1rem', cursor: 'pointer' }}
-        >
-          Use My Location
-        </button>
-      </div>
-
-      <h3>2. Enter Credentials</h3>
-      <form onSubmit={handleTest} className="form-container">
-        <div>
-          <label htmlFor="demo-user">Username:</label>
-          <input
-            id="demo-user"
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label htmlFor="demo-pass">Password:</label>
-          <input
-            id="demo-pass"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        <button type="submit" disabled={loading || !latitude || !longitude}>
-          {loading ? 'Testing...' : '3. Test Authentication'}
-        </button>
-      </form>
-
-      {result && info && (
-        <div style={{
-          marginTop: '1.5rem',
-          padding: '1.2rem',
-          borderRadius: '8px',
-          backgroundColor: info.bg,
-          border: `1px solid ${info.border}`,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              width: 28, height: 28, borderRadius: '50%', backgroundColor: info.color,
-              color: '#fff', fontWeight: 'bold', fontSize: '0.9rem', flexShrink: 0,
-            }}>{info.icon}</span>
-            <h3 style={{ color: info.color, margin: 0 }}>{info.title}</h3>
-          </div>
-
-          <p style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', lineHeight: 1.5 }}>
-            {info.explanation}
+    <div className="demo-layout">
+      <main className="demo-main">
+        <header className="demo-header">
+          <h1>End-to-End Walkthrough</h1>
+          <p className="muted">
+            One form runs the full pipeline. Watch each stage light up as the response comes back —
+            credentials, MFA, IP-spoof check, zone match, token issuance.
           </p>
+        </header>
 
-          <div style={{ fontSize: '0.85rem', lineHeight: 1.6 }}>
-            <p style={{ margin: '0.25rem 0' }}><strong>HTTP Status:</strong> {result.status}</p>
-            {result.data.msg && <p style={{ margin: '0.25rem 0' }}><strong>Server Message:</strong> {result.data.msg}</p>}
-            {result.data.message && <p style={{ margin: '0.25rem 0' }}><strong>Server Message:</strong> {result.data.message}</p>}
-            {result.data.zoneName && <p style={{ margin: '0.25rem 0' }}><strong>Matched Zone:</strong> {result.data.zoneName}</p>}
-            {result.data.access && <p style={{ margin: '0.25rem 0' }}><strong>Access Decision:</strong> {result.data.access}</p>}
-            {result.data.errors && (
-              <div style={{ margin: '0.5rem 0' }}>
-                <strong>Validation Errors:</strong>
-                <ul style={{ margin: '0.25rem 0', paddingLeft: '1.2rem' }}>
-                  {result.data.errors.map((err, i) => (
-                    <li key={i}>{err.field}: {err.message}</li>
-                  ))}
-                </ul>
+        <Pipeline stages={stages} running={loading} />
+
+        <section className="demo-card">
+          <h3>1. Pick a location</h3>
+          <p className="muted small">Click the map, type coordinates, or use your current GPS.</p>
+          <Map zones={zones} selectedPosition={selectedPosition} setSelectedPosition={setSelectedPosition} showZoneActions={false} />
+
+          <div className="coord-row">
+            <label>Lat
+              <input type="number" step="any" value={latitude} onChange={(e) => setLatitude(e.target.value)} />
+            </label>
+            <label>Lng
+              <input type="number" step="any" value={longitude} onChange={(e) => setLongitude(e.target.value)} />
+            </label>
+            <button type="button" onClick={useCurrentLocation}>Use my GPS</button>
+          </div>
+        </section>
+
+        <section className="demo-card">
+          <h3>2. Credentials & MFA</h3>
+          <form onSubmit={handleTest} className="creds-grid">
+            <label>Username
+              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required />
+            </label>
+            <label>Password
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            </label>
+            <label className="mfa-field">
+              TOTP <span className="muted small">(optional — only if MFA enrolled)</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="\d{6}"
+                maxLength={6}
+                placeholder="123456"
+                value={totpCode}
+                onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
+              />
+            </label>
+            <button type="submit" disabled={loading || !latitude || !longitude} className="run-btn">
+              {loading ? 'Running…' : 'Run pipeline →'}
+            </button>
+          </form>
+
+          <div className="presets">
+            <span className="muted small">Try a preset:</span>
+            {PRESETS.map((p) => (
+              <button key={p.id} type="button" className="preset-chip" onClick={() => applyPreset(p)} title={p.help || ''}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {result && scenario && (
+          <section className={`demo-card result result--${scenario.tone}`}>
+            <h3>{scenario.title}</h3>
+            <p className="result-blurb">{scenario.blurb}</p>
+
+            <dl className="result-meta">
+              <div><dt>HTTP</dt><dd>{result.status}</dd></div>
+              {result.data?.msg && <div><dt>Server msg</dt><dd>{result.data.msg}</dd></div>}
+              {result.data?.message && <div><dt>Server msg</dt><dd>{result.data.message}</dd></div>}
+              {result.data?.zoneName && <div><dt>Zone</dt><dd>{result.data.zoneName}</dd></div>}
+              {result.data?.access && <div><dt>Decision</dt><dd>{result.data.access}</dd></div>}
+              {result.data?.token && <div><dt>JWT</dt><dd className="mono trunc">{result.data.token.slice(0, 32)}…</dd></div>}
+            </dl>
+
+            {result.data?.errors && (
+              <div className="result-errors">
+                <strong>Validation errors:</strong>
+                <ul>{result.data.errors.map((err, i) => <li key={i}>{err.field}: {err.message}</li>)}</ul>
               </div>
             )}
-          </div>
+          </section>
+        )}
+      </main>
+
+      <aside className="demo-sidebar">
+        <div className="sidebar-card">
+          <h3>Pipeline reference</h3>
+          <ol className="sidebar-stages">
+            {STAGE_DEFS.map((s, i) => (
+              <li key={s.id}>
+                <span className="sidebar-step-n">{i + 1}</span>
+                <div>
+                  <strong>{s.label}</strong>
+                  <p className="muted small">{s.detail}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <p className="muted small">
+            Admins skip stages 4–5: a valid credential + MFA grants access regardless of GPS.
+          </p>
         </div>
-      )}
 
-      <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: '#e9ecef', borderRadius: '8px' }}>
-        <h3 style={{ marginTop: 0 }}>Authentication Flow</h3>
-        <p style={{ fontSize: '0.85rem', color: '#555', marginBottom: '0.75rem' }}>
-          Each request goes through these checks in order. Failure at any step stops the flow:
-        </p>
-        <ol style={{ lineHeight: '2', fontSize: '0.9rem', paddingLeft: '1.2rem' }}>
-          <li><strong>Input Validation</strong> — Username (3-50 chars), password (8-128 chars), coordinates (valid lat/lng range)</li>
-          <li><strong>Credential Verification</strong> — Username and password checked against the database (bcrypt)</li>
-          <li><strong>Spoofing Detection</strong> — IP geolocation compared against submitted GPS coordinates (country-level match). VPN/proxy detection via ip-api.com and ipinfo.io</li>
-          <li><strong>Zone Verification</strong> — GPS coordinates checked against circular zones (Haversine distance) and grid zones (3m cell ID match)</li>
-          <li><strong>Access Decision</strong> — JWT access token (15 min) and refresh token (7 days) issued on success</li>
-        </ol>
-        <p style={{ fontSize: '0.85rem', color: '#555', marginTop: '0.5rem' }}>
-          <strong>Note:</strong> Admin users skip steps 3 and 4 — they are granted access with valid credentials alone.
-        </p>
-      </div>
-
-      <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#e9ecef', borderRadius: '8px' }}>
-        <h3 style={{ marginTop: 0 }}>Suggested Test Scenarios</h3>
-        <ul style={{ lineHeight: '2', fontSize: '0.9rem' }}>
-          <li><strong>Granted — inside zone:</strong> Valid credentials + click inside a blue/red zone on the map</li>
-          <li><strong>Denied — outside zone:</strong> Valid credentials + click in an empty area far from any zone</li>
-          <li><strong>Denied — wrong password:</strong> Correct username but wrong password</li>
-          <li><strong>Denied — nonexistent user:</strong> Enter a username that doesn't exist</li>
-          <li><strong>Denied — spoofed location:</strong> Valid credentials + coordinates in a different country (e.g. lat: 35.6762, lng: 139.6503 for Tokyo)</li>
-          <li><strong>Admin bypass:</strong> Log in as an admin — any coordinates will be accepted</li>
-          <li><strong>Validation error:</strong> Leave username empty, or enter lat: 999 to trigger input validation</li>
-        </ul>
-      </div>
+        <div className="sidebar-card">
+          <h3>Quick experiments</h3>
+          <ul className="sidebar-list">
+            <li>Click anywhere on a coloured zone, sign in → <em>granted</em>.</li>
+            <li>Click empty ocean → <em>outside zone</em>.</li>
+            <li>Run the <em>Country mismatch</em> preset → <em>spoof</em>.</li>
+            <li>Sign in as a TOTP-enabled user without a code → <em>MFA required</em>.</li>
+          </ul>
+        </div>
+      </aside>
     </div>
   );
 }
