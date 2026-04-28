@@ -24,7 +24,7 @@ services:
 
     buildCommand: |
       npm install
-      npm install --prefix frontend
+      npm install --prefix frontend --include=dev
       npm run build-frontend
 
     startCommand: node ./bin/www
