@@ -1,0 +1,74 @@
+/* DashboardPage.css — wider layout for the admin metrics + tab navigation */
+
+.dashboard-container {
+  max-width: 1200px;
+  margin: 1.5rem auto;
+  padding: 1.5rem 1.75rem 2rem;
+  background-color: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+
+.dashboard-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.dashboard-topbar h1 {
+  font-size: 1.5rem;
+  margin: 0;
+  color: var(--primary-dark, #1a4569);
+}
+
+.dashboard-tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.25rem;
+}
+
+.dashboard-tabs .tab {
+  background: transparent;
+  border: 0;
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.dashboard-tabs .tab:hover { color: var(--text); }
+
+.dashboard-tabs .tab.active {
+  color: var(--primary, #2c6e9b);
+  border-bottom-color: var(--primary, #2c6e9b);
+}
+
+.dashboard-body {
+  width: 100%;
+}
+
+.dashboard-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.dashboard-body table th,
+.dashboard-body table td {
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+@media (max-width: 700px) {
+  .dashboard-container {
+    margin: 0.5rem;
+    padding: 1rem;
+  }
+}

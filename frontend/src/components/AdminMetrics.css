@@ -1,0 +1,287 @@
+/* AdminMetrics.css — admin dashboard styling */
+
+.metrics-root {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.metrics-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.metrics-header h2 { margin: 0; }
+
+.metrics-controls { display: flex; gap: 0.5rem; align-items: center; }
+
+.window-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.window-toggle button {
+  background: transparent;
+  border: 0;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.window-toggle button.active {
+  background: var(--primary, #2c6e9b);
+  color: #fff;
+}
+
+.error-banner {
+  padding: 0.75rem 1rem;
+  background: #fff1f0;
+  border: 1px solid #ffa39e;
+  border-radius: var(--radius);
+  color: #a8071a;
+}
+
+/* ---------- KPI tiles ---------- */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.75rem;
+}
+
+.kpi-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.kpi-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.kpi-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--primary-dark, #1a4569);
+  line-height: 1.1;
+}
+
+.kpi-sub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* ---------- Cards ---------- */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 0.75rem;
+}
+
+.metrics-feed { grid-column: 1 / -1; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+.card h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  color: var(--primary-dark, #1a4569);
+}
+
+.muted { color: var(--text-muted); font-weight: 400; font-size: 0.8rem; }
+
+.empty-state {
+  padding: 1.5rem 0;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.footnote { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; }
+
+/* ---------- Time-series chart ---------- */
+.ts-chart { display: block; width: 100%; height: auto; }
+.ts-grid { stroke: #e8e8e8; stroke-width: 1; }
+.ts-tick { font-size: 10px; fill: #888; }
+.ts-bar-granted { fill: #4caf78; }
+.ts-bar-denied { fill: #d97766; }
+
+.legend {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.4rem;
+}
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+.dot-granted { background: #4caf78; }
+.dot-denied { background: #d97766; }
+
+/* ---------- Denial reasons ---------- */
+.denial-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+
+.denial-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+}
+
+.denial-label { color: var(--text); }
+.denial-value { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+.denial-bar {
+  background: #f1f1f1;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.denial-bar-fill { height: 100%; background: #d97766; }
+
+/* ---------- Tables ---------- */
+.metrics-table-wrap {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.metrics-table th, .metrics-table td {
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.metrics-table th {
+  background: #fafafa;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.metrics-table td.ok { color: #2e7d32; font-weight: 600; }
+.metrics-table td.fail { color: #c62828; }
+
+/* ---------- Zone usage list ---------- */
+.zone-usage-list { list-style: none; padding: 0; margin: 0; }
+.zone-usage-list li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.75rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+.zone-usage-list li:last-child { border-bottom: 0; }
+.zone-name { color: var(--text); }
+.zone-type-tag {
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: #eef3f7;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.zone-grants { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.link-btn {
+  background: transparent;
+  border: 0;
+  color: var(--primary, #2c6e9b);
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.85rem;
+}
+
+.danger-btn {
+  background: #c62828;
+  color: #fff;
+  border: 0;
+  padding: 0.3rem 0.7rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.danger-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ---------- User drilldown modal ---------- */
+.drilldown-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.drilldown {
+  background: #fff;
+  width: min(720px, 96vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+}
+
+.drilldown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.drilldown-header h3 { margin: 0; }
+
+.badge {
+  font-size: 0.7rem;
+  background: #eef3f7;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.close-btn {
+  background: transparent;
+  border: 0;
+  font-size: 1.5rem;
+  cursor: pointer;
+  line-height: 1;
+  color: var(--text-muted);
+}
+
+.drilldown-row { padding: 0.4rem 0; }
+.drilldown h4 { margin: 1rem 0 0.5rem; }
+.drilldown-table-wrap { max-height: 320px; overflow-y: auto; }
+
+.error { color: #c62828; }

@@ -13,6 +13,7 @@ const rateLimit = require("express-rate-limit"); // Rate limiting
 const usersRouter = require("./routes/users"); // Handles routes for user registration (/users)
 const authRouter = require('./routes/auth');   // Handles routes for authentication (/api/auth/login)
 const zonesRouter = require('./routes/zones');   // Handles routes for managing authorized zones.
+const metricsRouter = require('./routes/metrics'); // Admin metrics dashboard endpoints.
 const passport = require('./middleware/passport');
 
 // Initialize the Express application
@@ -92,6 +93,7 @@ app.use(passport.initialize());
 app.use('/api/users', registrationLimiter, usersRouter); // Routes for user registration with rate limiting
 app.use('/api/auth', authLimiter, authRouter); // Routes for authentication API with rate limiting
 app.use('/api/zones', zonesRouter); // Routes for managing authorized zones
+app.use('/api/metrics', metricsRouter); // Admin metrics dashboard
 
 // Catch-all route to serve the React app's index.html for client-side routing
 app.use((req, res, next) => {
