@@ -125,9 +125,27 @@ async function getCountryFromCoords(latitude, longitude) {
   }
 }
 
+/**
+ * Detects RFC-1918, loopback, and link-local addresses. We can't geolocate
+ * these (they have no public location), so we skip spoof checks rather than
+ * letting the distance fallback false-positive.
+ */
+function isPrivateIp(ip) {
+  if (!ip) return true;
+  const v4 = ip.replace(/^::ffff:/, ''); // strip IPv4-mapped IPv6 prefix
+  if (v4 === '127.0.0.1' || v4 === '::1') return true;
+  if (/^10\./.test(v4)) return true;
+  if (/^192\.168\./.test(v4)) return true;
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(v4)) return true;
+  if (/^169\.254\./.test(v4)) return true;
+  if (/^fc|^fd/i.test(ip)) return true; // IPv6 ULA
+  if (/^fe80:/i.test(ip)) return true; // IPv6 link-local
+  return false;
+}
+
 const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
-  if (!ip) {
-    return { isSpoofed: false }; // Cannot verify without IP
+  if (!ip || isPrivateIp(ip)) {
+    return { isSpoofed: false }; // Cannot meaningfully verify a private/empty IP
   }
 
   // Free geolocation services (no paid API key required)

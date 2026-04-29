@@ -18,8 +18,12 @@ const passport = require('./middleware/passport');
 
 // Initialize the Express application
 const app = express();
-// Trust first proxy only (more secure than 'true')
-app.set('trust proxy', 1);
+// Trust loopback + RFC-1918 + link-local hops, then take the next public IP
+// from X-Forwarded-For. This is the correct setting on Render / Heroku /
+// Railway / any platform that routes through one or more internal proxies
+// before reaching the app container — `trust proxy: 1` would stop at the
+// internal hop and surface its 10.x.x.x address as req.ip.
+app.set('trust proxy', 'loopback, linklocal, uniquelocal');
 
 // --- Security Middleware ---
 // Helmet sets various HTTP headers to help protect against common vulnerabilities
