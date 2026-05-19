@@ -184,7 +184,7 @@ const isLocationSpoofed = async (ip, clientLatitude, clientLongitude) => {
           // ip-api.com format
           lat = data.lat;
           lon = data.lon;
-          isProxy = data.proxy === true || data.hosting === true;
+          isProxy = data.proxy === true;
           country = data.countryCode || null;
         } else if (data.loc) {
           // ipinfo.io format
