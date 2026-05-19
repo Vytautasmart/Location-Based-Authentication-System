@@ -13,8 +13,9 @@ const { validateLogin, validateAccess } = require('../middleware/validation');
 const JWT_OPTIONS = { algorithm: 'HS256', expiresIn: '15m' };
 
 function clientIp(req) {
-    // trust proxy is set to 1 in app.js, so req.ip is the real client.
-    return req.ip;
+    // CF-Connecting-IP carries the real client IP when behind Cloudflare CDN.
+    // Fall back to req.ip for direct/non-Cloudflare traffic.
+    return req.headers['cf-connecting-ip'] || req.ip;
 }
 
 function refreshCookieOptions(expires) {
